@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ReadResult, Warning } from '../../shared/fsTypes'
+import { isSameOrInside } from '../../shared/paths'
 import type { Eol } from '../../shared/textFormat'
 import { t } from '../app/i18n'
 
@@ -26,7 +27,8 @@ export interface DocumentsState {
   open(r: ReadResult): string
   openUntitled(): string
   setText(id: string, text: string, origin: string): void
-  markSaved(id: string, path?: string): void
+  /** `writtenText` is what actually reached the disk; edits made while the write ran stay unsaved. */
+  markSaved(id: string, path?: string, writtenText?: string): void
   reload(id: string, r: ReadResult): void
   setExternal(id: string, state: Doc['external']): void
   /** Repoints documents at `oldPath` (or inside it, for folders) to `newPath`. */
@@ -117,10 +119,11 @@ export function createDocumentsStore() {
       notify(id, text, origin)
     },
 
-    markSaved(id, path) {
+    markSaved(id, path, writtenText) {
       const doc = get().docs[id]
       if (!doc) return
-      const next: Doc = { ...doc, baseline: doc.text, baselineNormalized: doc.text, external: 'none' }
+      const written = writtenText ?? doc.text
+      const next: Doc = { ...doc, baseline: written, baselineNormalized: written, external: 'none' }
       if (path) {
         next.path = path
         next.name = baseName(path)
@@ -162,7 +165,7 @@ export function createDocumentsStore() {
       set((s) => {
         const docs: Record<string, Doc> = {}
         for (const [id, d] of Object.entries(s.docs)) {
-          if (d.path === oldPath || d.path?.startsWith(`${oldPath}/`)) {
+          if (d.path !== null && isSameOrInside(d.path, oldPath)) {
             const path = newPath + d.path.slice(oldPath.length)
             docs[id] = { ...d, path, name: baseName(path) }
           } else docs[id] = d

@@ -16,6 +16,8 @@ export interface MockController {
   queueSaveAs(path: string | null): void
   emitChange(e: FileChange): void
   files: Map<string, Stored>
+  /** Every set of paths the app asked to watch, in order. */
+  watchCalls: string[][]
 }
 
 function parentOf(path: string): string {
@@ -41,6 +43,7 @@ export function createMockApi(
   let session: SessionData | null = initial.session ?? null
   const backups = new Map<string, string>(Object.entries(initial.backups ?? {}))
   let imageCounter = 0
+  const watchCalls: string[][] = []
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
 
@@ -119,7 +122,9 @@ export function createMockApi(
       for (const k of [...files.keys()]) if (k === path || k.startsWith(`${path}/`)) files.delete(k)
       dirs.delete(path)
     },
-    watch() {},
+    watch(paths) {
+      watchCalls.push([...paths])
+    },
     onFileChanged(cb) {
       listeners.add(cb)
       return () => {
@@ -170,7 +175,8 @@ export function createMockApi(
     queueFolder: (root) => void folderQueue.push(root),
     queueSaveAs: (p) => void saveAsQueue.push(p),
     emitChange: (e) => listeners.forEach((l) => l(e)),
-    files
+    files,
+    watchCalls
   }
   return { api, controller }
 }

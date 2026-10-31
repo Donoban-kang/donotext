@@ -44,7 +44,7 @@ export function createCommands(deps: CommandDeps) {
       notify({ kind: 'error', message: t('saveFailed', { name: d.name, reason: reason(e) }) })
       return false
     }
-    docs().markSaved(docId, path === d.path ? undefined : path)
+    docs().markSaved(docId, path === d.path ? undefined : path, d.text)
     return true
   }
 

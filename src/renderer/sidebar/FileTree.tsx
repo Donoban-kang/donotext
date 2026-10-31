@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DirEntry } from '../../shared/fsTypes'
+import { isSameOrInside } from '../../shared/paths'
 import { getCommands } from '../app/appCommands'
 import { t } from '../app/i18n'
 import { useDocuments } from '../store/documents'
@@ -93,7 +94,7 @@ export function FileTree(): React.ReactElement {
       setRoot(res.root)
       setChildren({ [res.root]: res.entries })
       setExpanded(new Set([res.root]))
-      window.api.watch([res.root])
+      // watching is managed centrally (app/services.ts): it covers open files AND this folder
     } catch (e) {
       fail(e)
     }
@@ -151,7 +152,7 @@ export function FileTree(): React.ReactElement {
     try {
       await window.api.deleteEntry(entry.path)
       for (const d of Object.values(useDocuments.getState().docs)) {
-        if (d.path === entry.path || d.path?.startsWith(`${entry.path}/`)) useDocuments.getState().setExternal(d.id, 'deleted')
+        if (d.path !== null && isSameOrInside(d.path, entry.path)) useDocuments.getState().setExternal(d.id, 'deleted')
       }
       await load(parentOf(entry.path))
     } catch (e) {

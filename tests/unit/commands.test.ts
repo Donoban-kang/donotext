@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockApi } from '../../src/renderer/api/mockApi'
 import { createCommands } from '../../src/renderer/app/commands'
+import { applyExternalChange } from '../../src/renderer/app/externalChange'
 import { createLayoutStore } from '../../src/renderer/store/layoutStore'
 import { createDocumentsStore } from '../../src/renderer/store/documents'
 import { allLeaves, countLeaves, findLeaf, MAX_LEAVES, splitLeaf } from '../../src/renderer/layout/tree'
@@ -235,6 +236,31 @@ describe('saveActive / saveAsActive', () => {
     ctx.controller.queueSaveAs('/w/ro-copy.md')
     expect(await ctx.commands.saveActive()).toBe(true)
     expect(ctx.documents.getState().docs[id].path).toBe('/w/ro-copy.md')
+  })
+})
+
+describe('saving while the user keeps typing', () => {
+  it('does not mark text clean that was never written, and the file watcher echo does not undo it', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    ctx.documents.getState().setText(id, 'first\n', 'p')
+    const realWrite = ctx.api.writeFile.bind(ctx.api)
+    let release!: () => void
+    vi.spyOn(ctx.api, 'writeFile').mockImplementation(async (path, text, eol, bom) => {
+      await new Promise<void>((r) => (release = r)) // a slow disk
+      await realWrite(path, text, eol, bom)
+    })
+    const saving = ctx.commands.saveActive()
+    await Promise.resolve()
+    ctx.documents.getState().setText(id, 'first\nsecond\n', 'p') // typed during the write
+    release()
+    expect(await saving).toBe(true)
+    expect(ctx.documents.getState().isDirty(id)).toBe(true)
+    expect(ctx.documents.getState().docs[id].text).toBe('first\nsecond\n')
+    expect((await ctx.api.readFile('/w/a.md')).text).toBe('first\n')
+    // the watcher reports our own write: it must neither reload nor flag the document
+    const echo = applyExternalChange(ctx.documents.getState().docs[id], { kind: 'change' }, await ctx.api.readFile('/w/a.md'))
+    expect(echo.action).toBe('none')
   })
 })
 

@@ -131,6 +131,36 @@ describe('renamePath', () => {
   })
 })
 
+describe('renamePath on Windows-style paths', () => {
+  it('repoints documents inside a renamed folder when paths use backslashes', () => {
+    const inside = store.getState().open(read({ path: 'C:\\w\\dir\\sub\\a.md' }))
+    const sibling = store.getState().open(read({ path: 'C:\\w\\dir2\\a.md' }))
+    store.getState().renamePath('C:\\w\\dir', 'C:\\w\\folder')
+    expect(store.getState().docs[inside].path).toBe('C:\\w\\folder\\sub\\a.md')
+    expect(store.getState().docs[inside].name).toBe('a.md')
+    expect(store.getState().docs[sibling].path).toBe('C:\\w\\dir2\\a.md')
+  })
+})
+
+describe('markSaved with the text that was actually written', () => {
+  it('keeps edits made while the write was in flight dirty', () => {
+    const id = store.getState().open(read())
+    store.getState().setText(id, 'written\n', 'p')
+    const written = store.getState().docs[id].text
+    store.getState().setText(id, 'written\nplus a keystroke', 'p') // lands during the slow write
+    store.getState().markSaved(id, undefined, written)
+    expect(store.getState().docs[id].text).toBe('written\nplus a keystroke')
+    expect(store.getState().docs[id].baseline).toBe('written\n')
+    expect(store.getState().isDirty(id)).toBe(true)
+  })
+  it('is clean when nothing changed during the write', () => {
+    const id = store.getState().open(read())
+    store.getState().setText(id, 'x', 'p')
+    store.getState().markSaved(id, undefined, 'x')
+    expect(store.getState().isDirty(id)).toBe(false)
+  })
+})
+
 describe('save and reload', () => {
   it('keeps CRLF and BOM through markSaved', () => {
     const id = store.getState().open(read({ eol: 'crlf', bom: true }))

@@ -100,3 +100,17 @@ test('outline shows an empty message without headings', async ({ page }) => {
   await page.getByRole('tab', { name: '개요' }).click()
   await expect(page.getByText('제목이 없습니다.')).toBeVisible()
 })
+
+test('opening a folder keeps watching the files that are already open', async ({ page }) => {
+  await page.addInitScript((s) => {
+    window.__DONOTEXT_SEED__ = s
+  }, { '/elsewhere/solo.md': '# 따로\n', '/w/notes/a.md': 'a' })
+  await page.goto('/')
+  await page.evaluate(() => window.__mock!.queueOpen(['/elsewhere/solo.md']))
+  await page.getByRole('button', { name: '열기', exact: true }).click()
+  await page.evaluate(() => window.__mock!.queueFolder('/w/notes'))
+  await page.getByRole('button', { name: '폴더 열기' }).click()
+  await expect(page.getByRole('tree')).toBeVisible()
+  const last = await page.evaluate(() => window.__mock!.watchCalls.at(-1))
+  expect(last).toEqual(['/elsewhere/solo.md', '/w/notes'])
+})
