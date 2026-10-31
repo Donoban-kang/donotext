@@ -53,3 +53,10 @@ body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-s
 
 .dn-toolbar-check { font-size: 13px; margin-left: 4px; }
 .dn-banner button { margin-left: 8px; }
+
+.dn-toolbar-sep { width: 1px; height: 18px; background: rgba(127,127,127,.4); margin: 0 4px; }
+.dn-toolbar button[aria-pressed="true"] { background: rgba(60,120,240,.25); }
+.dn-divider { flex: none; background: rgba(127,127,127,.25); }
+.dn-divider-row { width: 6px; cursor: col-resize; }
+.dn-divider-col { height: 6px; cursor: row-resize; }
+.dn-divider:hover, .dn-divider:focus-visible { background: rgba(60,120,240,.6); outline: none; }

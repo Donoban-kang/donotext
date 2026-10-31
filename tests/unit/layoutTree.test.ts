@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_DEPTH,
   MAX_LEAVES,
+  adjustSizes,
   allLeaves,
   closeLeaf,
   closeTab,
@@ -259,5 +260,34 @@ describe('remapDocIds', () => {
     expect(countLeaves(out)).toBe(2)
     expect(findLeaf(out, base.id)!.tabs).toEqual([doc('x2')])
     expect(findLeaf(out, added!.id)!.tabs).toEqual([])
+  })
+})
+
+describe('adjustSizes', () => {
+  it('moves the boundary between two neighbours and keeps the sum at 1', () => {
+    const out = adjustSizes([0.5, 0.5], 0, 0.1)
+    expect(out[0]).toBeCloseTo(0.6)
+    expect(out[1]).toBeCloseTo(0.4)
+    expect(sum(out)).toBeCloseTo(1)
+  })
+  it('only changes the two panes next to the boundary', () => {
+    const out = adjustSizes([0.2, 0.3, 0.5], 1, 0.1)
+    expect(out[0]).toBeCloseTo(0.2)
+    expect(out[1]).toBeCloseTo(0.4)
+    expect(out[2]).toBeCloseTo(0.4)
+  })
+  it('never lets a pane shrink below the minimum', () => {
+    const out = adjustSizes([0.5, 0.5], 0, 0.9, 0.1)
+    expect(out[0]).toBeCloseTo(0.9)
+    expect(out[1]).toBeCloseTo(0.1)
+    const back = adjustSizes([0.5, 0.5], 0, -0.9, 0.1)
+    expect(back[0]).toBeCloseTo(0.1)
+  })
+  it('returns the same array for a zero move, a bad index or non-finite delta', () => {
+    const sizes = [0.5, 0.5]
+    expect(adjustSizes(sizes, 0, 0)).toBe(sizes)
+    expect(adjustSizes(sizes, 1, 0.1)).toBe(sizes)
+    expect(adjustSizes(sizes, -1, 0.1)).toBe(sizes)
+    expect(adjustSizes(sizes, 0, Number.NaN)).toBe(sizes)
   })
 })

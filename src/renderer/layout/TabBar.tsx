@@ -5,6 +5,8 @@ import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import type { Leaf, Tab } from './tree'
 
+export const TAB_DRAG_TYPE = 'application/x-donotext-tab'
+
 function TabLabel({ tab }: { tab: Tab }): React.ReactElement {
   const docs = useDocuments((s) => s.docs)
   const dirty = useDocuments((s) => s.isDirty)
@@ -36,6 +38,12 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
           role="tab"
           data-testid="tab"
           aria-selected={i === leaf.active}
+          data-tab-index={i}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ leafId: leaf.id, index: i }))
+            e.dataTransfer.effectAllowed = 'move'
+          }}
           className={'dn-tab' + (i === leaf.active ? ' active' : '')}
           onMouseDown={(e) => {
             if (e.button === 1) {

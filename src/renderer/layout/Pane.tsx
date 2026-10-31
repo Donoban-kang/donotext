@@ -5,7 +5,7 @@ import { SourceEditor } from '../editor/SourceEditor'
 import { WysiwygEditor } from '../editor/WysiwygEditor'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
-import { TabBar } from './TabBar'
+import { TabBar, TAB_DRAG_TYPE } from './TabBar'
 import type { Leaf } from './tree'
 
 function PaneBody({ leaf }: { leaf: Leaf }): React.ReactElement {
@@ -50,6 +50,28 @@ export function Pane({ leaf }: { leaf: Leaf }): React.ReactElement {
       className={'dn-pane' + (active ? ' active' : '')}
       data-testid={`pane-${leaf.id}`}
       onMouseDown={() => focus(leaf.id)}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(TAB_DRAG_TYPE)) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+        }
+      }}
+      onDrop={(e) => {
+        const raw = e.dataTransfer.getData(TAB_DRAG_TYPE)
+        if (!raw) return
+        e.preventDefault()
+        try {
+          const from = JSON.parse(raw) as { leafId: string; index: number }
+          // Dropping on a tab inserts before it; anywhere else appends.
+          const over = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-index]')
+          const index = over ? Number(over.dataset.tabIndex) : leaf.tabs.length
+          if (typeof from.leafId === 'string' && Number.isInteger(from.index)) {
+            useLayout.getState().moveTab(from, { leafId: leaf.id, index })
+          }
+        } catch {
+          // ignore malformed drags
+        }
+      }}
     >
       <TabBar leaf={leaf} />
       <div className="dn-pane-body">

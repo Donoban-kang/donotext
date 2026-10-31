@@ -1,6 +1,8 @@
 import type React from 'react'
 import { useEffect } from 'react'
+import { ScrollLinkController } from '../layout/ScrollLinkController'
 import { SplitView } from '../layout/SplitView'
+import { allLeaves } from '../layout/tree'
 import { Sidebar } from '../sidebar/Sidebar'
 import { useDocuments } from '../store/documents'
 import { useSettings } from '../store/settings'
@@ -24,13 +26,20 @@ export function App(): React.ReactElement {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      if (!(e.ctrlKey || e.metaKey)) return
       const c = getCommands()
       const key = e.key.toLowerCase()
       const run = (fn: () => unknown): void => {
         e.preventDefault()
         void fn()
       }
+      if (e.altKey) {
+        if (e.key === 'ArrowRight') run(() => c.focusPane(1))
+        else if (e.key === 'ArrowLeft') run(() => c.focusPane(-1))
+        else if (key === 'w') run(c.closePane)
+        return
+      }
+      if (e.key === '\\' || e.key === '|') return run(() => c.splitActive(e.shiftKey ? 'col' : 'row'))
       if (key === 'o') run(c.openFile)
       else if (key === 's') run(e.shiftKey ? c.saveAsActive : c.saveActive)
       else if (key === 'n') run(c.newUntitled)
@@ -41,6 +50,8 @@ export function App(): React.ReactElement {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const leafCount = useLayout((s) => allLeaves(s.root).length)
+  const linked = useLayout((s) => s.scrollLink !== null)
   const autoSave = useSettings((s) => s.autoSave)
   const setAutoSave = useSettings((s) => s.setAutoSave)
   const recent = useWorkspace((s) => s.recent)
@@ -56,6 +67,16 @@ export function App(): React.ReactElement {
         <button disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
           {activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}
         </button>
+        <span className="dn-toolbar-sep" />
+        <button onClick={() => c.splitActive('row')}>{t('splitRight')}</button>
+        <button onClick={() => c.splitActive('col')}>{t('splitDown')}</button>
+        <button disabled={leafCount < 2} onClick={() => void c.closePane()}>
+          {t('closePane')}
+        </button>
+        <button disabled={leafCount < 2} aria-pressed={linked} onClick={() => c.toggleScrollLink()}>
+          {t('scrollLinkOn')}
+        </button>
+        <span className="dn-toolbar-sep" />
         <select
           aria-label={t('recentFiles')}
           value=""
@@ -79,6 +100,7 @@ export function App(): React.ReactElement {
           <SplitView node={root} />
         </main>
       </div>
+      <ScrollLinkController />
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
       <Toasts />

@@ -122,6 +122,23 @@ export function resize(root: LayoutNode, splitId: string, sizes: number[]): Layo
   })
 }
 
+/**
+ * Moves the boundary between pane `index` and `index + 1` by `delta` (a fraction of the split),
+ * keeping both at least `min`. Returns the same array when nothing changes.
+ */
+export function adjustSizes(sizes: number[], index: number, delta: number, min = 0.08): number[] {
+  if (!Number.isFinite(delta) || index < 0 || index + 1 >= sizes.length) return sizes
+  const lo = min - sizes[index]
+  const hi = sizes[index + 1] - min
+  if (lo > hi) return sizes
+  const d = Math.max(lo, Math.min(hi, delta))
+  if (d === 0) return sizes
+  const out = [...sizes]
+  out[index] = sizes[index] + d
+  out[index + 1] = sizes[index + 1] - d
+  return out
+}
+
 export function equalize(root: LayoutNode, splitId: string): LayoutNode {
   return replace(root, splitId, (n) =>
     n.type === 'split' ? { ...n, sizes: n.children.map(() => 1 / n.children.length) } : n

@@ -1,7 +1,7 @@
 import type { ReadResult } from '../../shared/fsTypes'
 import type { DonotextApi } from '../../shared/ipc'
 import { flushAllEditors } from '../editor/sync'
-import { findLeaf } from '../layout/tree'
+import { allLeaves, findLeaf } from '../layout/tree'
 import type { createDocumentsStore } from '../store/documents'
 import { tabDocIds, type createLayoutStore } from '../store/layoutStore'
 import { t } from './i18n'
@@ -143,6 +143,45 @@ export function createCommands(deps: CommandDeps) {
     return a ? closeTab(a.leafId, a.index) : false
   }
 
+  /** Splits the active pane; the new pane shows the same tab so one file can be viewed twice. */
+  function splitActive(dir: 'row' | 'col'): boolean {
+    const active = lay().getActiveTab()
+    if (!lay().splitActive(dir)) {
+      notify({ kind: 'warning', message: t('splitLimit') })
+      return false
+    }
+    if (active) lay().openTabInActive({ ...active.tab })
+    return true
+  }
+
+  /** Closes a pane and its tabs (asking about unsaved changes). The last pane is never closed. */
+  async function closePane(leafId = lay().activeLeafId): Promise<boolean> {
+    if (allLeaves(lay().root).length <= 1) return false
+    const leaf = findLeaf(lay().root, leafId)
+    if (!leaf) return false
+    for (let i = leaf.tabs.length - 1; i >= 0; i--) {
+      if (!(await closeTab(leafId, i))) return false
+    }
+    lay().closeLeafById(leafId)
+    return true
+  }
+
+  function focusPane(delta: number): void {
+    lay().focusRelative(delta)
+  }
+
+  /** Links the active pane's scrolling to the next pane, or removes the link. */
+  function toggleScrollLink(): void {
+    if (lay().scrollLink) {
+      lay().setScrollLink(null)
+      return
+    }
+    const leaves = allLeaves(lay().root)
+    if (leaves.length < 2) return
+    const i = leaves.findIndex((l) => l.id === lay().activeLeafId)
+    lay().setScrollLink({ a: leaves[i].id, b: leaves[(i + 1) % leaves.length].id })
+  }
+
   function toggleView(): void {
     const a = lay().getActiveTab()
     if (!a || a.tab.kind !== 'doc') return
@@ -151,7 +190,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, reloadFromDisk, keepLocal, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, reloadFromDisk, keepLocal, splitActive, closePane, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>

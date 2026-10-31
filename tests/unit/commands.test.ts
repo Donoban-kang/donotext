@@ -3,7 +3,7 @@ import { createMockApi } from '../../src/renderer/api/mockApi'
 import { createCommands } from '../../src/renderer/app/commands'
 import { createLayoutStore } from '../../src/renderer/store/layoutStore'
 import { createDocumentsStore } from '../../src/renderer/store/documents'
-import { findLeaf, splitLeaf } from '../../src/renderer/layout/tree'
+import { allLeaves, countLeaves, findLeaf, MAX_LEAVES, splitLeaf } from '../../src/renderer/layout/tree'
 import type { DonotextApi } from '../../src/shared/ipc'
 
 type Choice = 'save' | 'discard' | 'cancel'
@@ -251,5 +251,98 @@ describe('toggleView', () => {
     await openA(ctx, '/w/x.json')
     ctx.commands.toggleView()
     expect(ctx.layout.getState().getActiveTab()!.tab).toMatchObject({ view: 'source' })
+  })
+})
+
+describe('pane commands', () => {
+  it('splitActive creates a pane, focuses it and shows the same document there', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    const first = ctx.layout.getState().activeLeafId
+    expect(ctx.commands.splitActive('row')).toBe(true)
+    const leaves = allLeaves(ctx.layout.getState().root)
+    expect(leaves).toHaveLength(2)
+    expect(ctx.layout.getState().activeLeafId).not.toBe(first)
+    expect(findLeaf(ctx.layout.getState().root, ctx.layout.getState().activeLeafId)!.tabs).toEqual([
+      { kind: 'doc', docId: id, view: 'wysiwyg' }
+    ])
+    expect(ctx.layout.getState().docRefs(id)).toBe(2)
+  })
+  it('splitActive on an empty pane creates an empty pane', () => {
+    const ctx = setup()
+    expect(ctx.commands.splitActive('col')).toBe(true)
+    expect(allLeaves(ctx.layout.getState().root).every((l) => l.tabs.length === 0)).toBe(true)
+  })
+  it('refuses the 7th pane with a warning and leaves the layout unchanged', () => {
+    const ctx = setup()
+    for (let i = 1; i < MAX_LEAVES; i++) expect(ctx.commands.splitActive('row')).toBe(true)
+    const before = ctx.layout.getState().root
+    expect(ctx.commands.splitActive('col')).toBe(false)
+    expect(ctx.layout.getState().root).toBe(before)
+    expect(countLeaves(before)).toBe(MAX_LEAVES)
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning' }))
+  })
+  it('closePane never closes the last remaining pane', async () => {
+    const ctx = setup()
+    await openA(ctx)
+    expect(await ctx.commands.closePane()).toBe(false)
+    expect(countLeaves(ctx.layout.getState().root)).toBe(1)
+    expect(Object.keys(ctx.documents.getState().docs)).toHaveLength(1)
+  })
+  it('closePane closes the tabs and the pane, keeping documents that other panes still show', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    ctx.commands.splitActive('row')
+    expect(await ctx.commands.closePane()).toBe(true)
+    expect(countLeaves(ctx.layout.getState().root)).toBe(1)
+    expect(ctx.documents.getState().docs[id]).toBeDefined()
+    expect(ctx.layout.getState().docRefs(id)).toBe(1)
+  })
+  it('closePane stops when the user cancels saving a modified document', async () => {
+    const ctx = setup(undefined, 'cancel')
+    const id = await openA(ctx)
+    ctx.commands.splitActive('row')
+    // make the active pane the only holder of a modified second document
+    const other = ctx.documents.getState().openUntitled()
+    ctx.layout.getState().openDoc(other)
+    ctx.documents.getState().setText(other, 'unsaved', 'p')
+    expect(await ctx.commands.closePane()).toBe(false)
+    expect(countLeaves(ctx.layout.getState().root)).toBe(2)
+    expect(ctx.documents.getState().docs[other]).toBeDefined()
+    expect(id).toBeDefined()
+  })
+  it('focusPane cycles through panes in both directions', () => {
+    const ctx = setup()
+    ctx.commands.splitActive('row')
+    ctx.commands.splitActive('row')
+    const ids = allLeaves(ctx.layout.getState().root).map((l) => l.id)
+    ctx.layout.getState().focusLeaf(ids[0])
+    ctx.commands.focusPane(1)
+    expect(ctx.layout.getState().activeLeafId).toBe(ids[1])
+    ctx.commands.focusPane(-1)
+    ctx.commands.focusPane(-1)
+    expect(ctx.layout.getState().activeLeafId).toBe(ids[ids.length - 1])
+  })
+  it('toggleScrollLink pairs the active pane with the next one and clears on the second call', () => {
+    const ctx = setup()
+    ctx.commands.toggleScrollLink()
+    expect(ctx.layout.getState().scrollLink).toBeNull() // one pane: nothing to link
+    ctx.commands.splitActive('row')
+    const [a, b] = allLeaves(ctx.layout.getState().root).map((l) => l.id)
+    ctx.layout.getState().focusLeaf(a)
+    ctx.commands.toggleScrollLink()
+    expect(ctx.layout.getState().scrollLink).toEqual({ a, b })
+    ctx.commands.toggleScrollLink()
+    expect(ctx.layout.getState().scrollLink).toBeNull()
+  })
+  it('drops the scroll link when one of the linked panes is closed', async () => {
+    const ctx = setup()
+    ctx.commands.splitActive('row')
+    const [a] = allLeaves(ctx.layout.getState().root).map((l) => l.id)
+    ctx.layout.getState().focusLeaf(a)
+    ctx.commands.toggleScrollLink()
+    expect(ctx.layout.getState().scrollLink).not.toBeNull()
+    await ctx.commands.closePane()
+    expect(ctx.layout.getState().scrollLink).toBeNull()
   })
 })
