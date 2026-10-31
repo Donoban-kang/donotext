@@ -5,14 +5,18 @@ import type { Editor } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { docDirOf, imageExtFromMime } from '../../shared/images'
 import { t } from '../app/i18n'
+import { useSettings } from '../store/settings'
 import { useToasts } from '../store/ui'
 import { useDocuments } from '../store/documents'
 import { parseMarkdown, serializeMarkdown } from './markdown/codec'
 import { ImageDisplay } from './imageDisplay'
+import { FocusMode } from './focusMode'
+import { typewriterScrollDelta } from './typewriter'
 import { FindPanel } from './FindPanel'
 import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
+import 'katex/dist/katex.min.css'
 import './editor.css'
 
 function toContent(md: string): JSONContent {
@@ -27,6 +31,8 @@ export interface WysiwygEditorProps {
 
 export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.ReactElement {
   const readOnly = useDocuments((s) => s.docs[docId]?.readOnly ?? false)
+  const focusMode = useSettings((s) => s.focusMode)
+  const typewriterMode = useSettings((s) => s.typewriterMode)
   const composing = useRef(false)
   const pendingRemote = useRef<string | null>(null)
   const suppress = useRef(false)
@@ -59,7 +65,8 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
           ? ImageDisplay.configure({ getBaseDir: () => docDirOf(useDocuments.getState().docs[docId]?.path ?? null) })
           : ext
       ),
-      SearchReplace.configure({ onOpen: (m) => setFindMode(m) })
+      SearchReplace.configure({ onOpen: (m) => setFindMode(m) }),
+      FocusMode
     ],
     content: toContent(useDocuments.getState().docs[docId]?.text ?? ''),
     editable: !readOnly,
@@ -67,7 +74,12 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     onUpdate: ({ editor: ed }) => {
       if (suppress.current) return
       debouncer.current.call(() => {
-        useDocuments.getState().setText(docId, serializeMarkdown(ed.getJSON()), paneId)
+        const next = serializeMarkdown(ed.getJSON())
+        const d = useDocuments.getState().docs[docId]
+        // Loading can make the editor touch its document (e.g. add a trailing paragraph). That is not
+        // an edit: an untouched file must keep its exact original text.
+        if (d && d.text === d.baseline && next === d.baselineNormalized) return
+        useDocuments.getState().setText(docId, next, paneId)
       })
     },
     editorProps: {
@@ -116,6 +128,26 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     editor.setEditable(!readOnly)
   }, [editor, readOnly])
 
+  // Typewriter mode: keep the caret line vertically centred while typing or moving.
+  useEffect(() => {
+    if (!editor || !typewriterMode) return
+    const center = (): void => {
+      if (editor.isDestroyed || !editor.isFocused) return
+      const host = editor.view.dom.closest<HTMLElement>('.dn-editor-host')
+      if (!host) return
+      const c = editor.view.coordsAtPos(editor.state.selection.head)
+      const r = host.getBoundingClientRect()
+      const delta = typewriterScrollDelta({ caretTop: c.top, caretHeight: c.bottom - c.top, hostTop: r.top, hostHeight: r.height })
+      if (delta !== 0) host.scrollTop += delta
+    }
+    editor.on('selectionUpdate', center)
+    editor.on('update', center)
+    return () => {
+      editor.off('selectionUpdate', center)
+      editor.off('update', center)
+    }
+  }, [editor, typewriterMode])
+
   useEffect(() => {
     if (!editor) return
     const deb = debouncer.current
@@ -137,7 +169,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   }, [editor, docId, paneId])
 
   return (
-    <div className="dn-editor-wrap">
+    <div className={`dn-editor-wrap${focusMode ? ' dn-focus-mode' : ''}${typewriterMode ? ' dn-typewriter' : ''}`}>
       {editor && findMode && <FindPanel editor={editor} mode={findMode} onClose={() => setFindMode(null)} />}
       <EditorContent editor={editor} className="dn-editor-host" />
     </div>

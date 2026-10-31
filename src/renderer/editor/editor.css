@@ -18,3 +18,12 @@
 .dn-find-panel { position: absolute; top: 8px; right: 24px; z-index: 5; display: flex; gap: 6px; align-items: center; padding: 6px 8px; background: Canvas; color: CanvasText; border: 1px solid rgba(127,127,127,.5); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
 .dn-search-match { background: rgba(255, 213, 0, .45); }
 .dn-search-current { background: rgba(255, 140, 0, .65); }
+
+.dn-wysiwyg pre[data-front-matter] { border-left: 3px solid #8a6d00; background: rgba(255, 200, 0, .08); }
+.dn-wysiwyg pre[data-front-matter]::before { content: "front matter"; display: block; font: 11px/1.2 system-ui; opacity: .6; margin-bottom: 4px; }
+.dn-math { cursor: pointer; }
+.dn-math-block { text-align: center; margin: 12px 0; min-height: 1.5em; }
+.dn-math-input { font: 14px ui-monospace, Menlo, Consolas, monospace; width: 100%; box-sizing: border-box; }
+textarea.dn-math-input { min-height: 4.5em; }
+.dn-focus-mode .dn-wysiwyg > *:not(.dn-block-current) { opacity: .35; transition: opacity .15s; }
+.dn-typewriter .dn-wysiwyg { padding-bottom: 50vh; }

@@ -7,6 +7,8 @@ import Image from '@tiptap/extension-image'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import { isSafeLinkUrl } from '../../../shared/links'
+import { FrontMatter } from './frontMatterNode'
+import { MathBlock, MathInline } from './math'
 import { RawHtmlBlock, RawHtmlInline } from './rawHtml'
 
 const lowlight = createLowlight(common)
@@ -28,6 +30,9 @@ export function getExtensions(): Extensions {
     TaskItem.configure({ nested: true }),
     Image,
     RawHtmlBlock,
-    RawHtmlInline
+    RawHtmlInline,
+    FrontMatter,
+    MathInline,
+    MathBlock
   ]
 }

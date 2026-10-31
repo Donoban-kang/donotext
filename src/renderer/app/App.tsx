@@ -57,6 +57,10 @@ export function App(): React.ReactElement {
   const setCompareOpen = useDialogs((s) => s.setCompareOpen)
   const autoSave = useSettings((s) => s.autoSave)
   const setAutoSave = useSettings((s) => s.setAutoSave)
+  const focusMode = useSettings((s) => s.focusMode)
+  const setFocusMode = useSettings((s) => s.setFocusMode)
+  const typewriterMode = useSettings((s) => s.typewriterMode)
+  const setTypewriterMode = useSettings((s) => s.setTypewriterMode)
   const recent = useWorkspace((s) => s.recent)
   const c = getCommands()
   return (
@@ -96,6 +100,12 @@ export function App(): React.ReactElement {
             </option>
           ))}
         </select>
+        <label className="dn-toolbar-check">
+          <input type="checkbox" checked={focusMode} onChange={(e) => setFocusMode(e.target.checked)} /> {t('focusMode')}
+        </label>
+        <label className="dn-toolbar-check">
+          <input type="checkbox" checked={typewriterMode} onChange={(e) => setTypewriterMode(e.target.checked)} /> {t('typewriterMode')}
+        </label>
         <label className="dn-toolbar-check">
           <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> {t('autoSave')}
         </label>

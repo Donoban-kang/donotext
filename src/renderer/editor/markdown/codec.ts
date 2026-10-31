@@ -3,6 +3,8 @@ import { generateHTML } from '@tiptap/html'
 import { MarkdownManager } from '@tiptap/markdown'
 import { isSafeLinkUrl } from '../../../shared/links'
 import { getExtensions } from './extensions'
+import { splitFrontMatter } from './frontMatter'
+import { wouldParseAsMath } from './math'
 import { htmlSource, type HtmlToken } from './rawHtml'
 
 let manager: MarkdownManager | undefined
@@ -50,13 +52,54 @@ function sanitizeNode(node: JSONContent): JSONContent | null {
 }
 
 function parseSafe(md: string): JSONContent {
-  return sanitizeNode(getManager().parse(md)) ?? { type: 'doc', content: [] }
+  const { frontMatter, body } = splitFrontMatter(md)
+  // The blank line that separates front matter from the body is not content.
+  const json = sanitizeNode(getManager().parse(frontMatter === null ? body : body.replace(/^\n+/, ''))) ?? { type: 'doc', content: [] }
+  if (frontMatter === null) return json
+  const fm: JSONContent = { type: 'frontMatter', content: frontMatter ? [{ type: 'text', text: frontMatter }] : [] }
+  return { ...json, content: [fm, ...(json.content ?? [])] }
 }
+
+/**
+ * Marks `$` in plain text that would otherwise be read back as a formula. The serializer escapes
+ * backslashes itself, so a sentinel character stands in for the dollar sign and is turned into
+ * `\$` after serialization.
+ */
+function markLiteralDollars(node: JSONContent, sentinel: string): JSONContent {
+  if (node.type === 'text') {
+    const isCode = node.marks?.some((m) => m.type === 'code')
+    return !isCode && node.text && wouldParseAsMath(node.text) ? { ...node, text: node.text.split('$').join(sentinel) } : node
+  }
+  if (node.type === 'codeBlock' || node.type === 'frontMatter') return node
+  return node.content ? { ...node, content: node.content.map((c) => markLiteralDollars(c, sentinel)) } : node
+}
+
+/** A private-use character that does not occur anywhere in the document. */
+function pickSentinel(doc: JSONContent): string {
+  const text = JSON.stringify(doc)
+  for (let code = 0xe000; code < 0xf8ff; code++) {
+    const ch = String.fromCharCode(code)
+    if (!text.includes(ch)) return ch
+  }
+  return '\uE000'
+}
+
+const withoutFrontMatter = (doc: JSONContent): JSONContent => ({
+  ...doc,
+  content: (doc.content ?? []).filter((n) => n.type !== 'frontMatter')
+})
 
 /** Serializes editor JSON to markdown, ending non-empty output with a single newline. */
 export function serializeMarkdown(doc: JSONContent): string {
-  const md = getManager().serialize(doc)
-  return md.trim() === '' ? '' : md.replace(/\n*$/, '\n')
+  const first = doc.content?.[0]
+  const fmText = first?.type === 'frontMatter' ? (first.content ?? []).map((n) => n.text ?? '').join('') : null
+  const bodyDoc = withoutFrontMatter(doc)
+  const sentinel = pickSentinel(bodyDoc)
+  const body = getManager().serialize(markLiteralDollars(bodyDoc, sentinel)).split(sentinel).join('\\$')
+  const bodyText = body.trim() === '' ? '' : body.replace(/^\n+/, '').replace(/\n*$/, '\n')
+  if (fmText === null) return bodyText
+  const head = `---\n${fmText}${fmText ? '\n' : ''}---\n`
+  return bodyText ? `${head}\n${bodyText}` : head
 }
 
 export function parseMarkdown(md: string): JSONContent {
@@ -69,5 +112,5 @@ export function normalizeMarkdown(md: string): string {
 }
 
 export function markdownToHtml(md: string): string {
-  return generateHTML(parseSafe(md), getExtensions())
+  return generateHTML(withoutFrontMatter(parseSafe(md)), getExtensions())
 }

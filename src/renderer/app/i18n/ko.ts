@@ -36,6 +36,8 @@ export const ko = {
   imageNeedsSave: '이미지를 붙여넣으려면 먼저 문서를 저장하세요.',
   imageSaveFailed: '이미지를 저장하지 못했습니다: {reason}',
   autoSave: '자동 저장',
+  focusMode: '집중 모드',
+  typewriterMode: '타자기 모드',
   compare: '비교…',
   compareTitle: '문서 비교',
   compareLeft: '왼쪽 문서',

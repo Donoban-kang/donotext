@@ -15,6 +15,10 @@ describe('normalizeMarkdown', () => {
     expect(normalizeMarkdown(once)).toBe(once)
   })
 
+  it('never starts the output with blank lines', () => {
+    expect(normalizeMarkdown('| a | b |\n| --- | --- |\n| 1 | 2 |\n').startsWith('|')).toBe(true)
+  })
+
   it('returns an empty string for an empty document', () => {
     expect(normalizeMarkdown('')).toBe('')
   })
@@ -69,3 +73,70 @@ describe('markdownToHtml', () => {
     expect(html).not.toMatch(/<img[^>]*onerror/i)
   })
 })
+
+describe('front matter', () => {
+  it('survives a roundtrip unchanged and keeps the body', () => {
+    const md = '---\ntitle: 제목\ntags: [a, b]\n---\n\n# 본문\n'
+    const out = normalizeMarkdown(md)
+    expect(out.startsWith('---\ntitle: 제목\ntags: [a, b]\n---\n')).toBe(true)
+    expect(out).toContain('# 본문')
+    expect(normalizeMarkdown(out)).toBe(out)
+  })
+  it('keeps a document that is only front matter', () => {
+    const out = normalizeMarkdown('---\na: 1\n---\n')
+    expect(out).toBe('---\na: 1\n---\n')
+  })
+  it('does not treat a horizontal rule in the middle of the text as front matter', () => {
+    const out = normalizeMarkdown('# t\n\n---\n\ntext\n')
+    expect(out).toContain('# t')
+    expect(out).toContain('text')
+    expect(out.startsWith('---')).toBe(false)
+  })
+  it('is left out of HTML export', () => {
+    const html = markdownToHtml('---\nsecret: x\n---\n\n# Title\n')
+    expect(html).toContain('<h1')
+    expect(html).not.toContain('secret')
+  })
+})
+
+describe('math', () => {
+  it('round-trips inline and block formulas verbatim', () => {
+    const md = '질량 $E=mc^2$ 은\n\n$$\n\\int_0^1 x\\,dx = \\frac12\n$$\n\n끝\n'
+    const out = normalizeMarkdown(md)
+    expect(out).toContain('$E=mc^2$')
+    expect(out).toContain('$$\n\\int_0^1 x\\,dx = \\frac12\n$$')
+    expect(normalizeMarkdown(out)).toBe(out)
+  })
+  it('accepts a one-line $$ block', () => {
+    expect(normalizeMarkdown('$$x^2$$\n')).toContain('$$\nx^2\n$$')
+  })
+  it('does not turn prices into formulas', () => {
+    const out = normalizeMarkdown('사과는 $5 이고 배는 $10 입니다.\n')
+    expect(out).toContain('$5')
+    expect(out).toContain('$10')
+    expect(markdownToHtml('사과는 $5 이고 배는 $10 입니다.\n')).not.toContain('data-latex')
+  })
+  it('keeps escaped dollar signs literal and stable', () => {
+    const once = normalizeMarkdown('\\$a\\$ 는 수식이 아닙니다\n')
+    expect(once).not.toContain('data-latex')
+    expect(normalizeMarkdown(once)).toBe(once)
+    expect(markdownToHtml(once)).not.toContain('data-latex')
+  })
+  it('does not interpret $ inside inline code or code blocks', () => {
+    const md = '`$x$` 와\n\n```\n$y$\n$$\nz\n$$\n```\n'
+    const out = normalizeMarkdown(md)
+    expect(out).toContain('`$x$`')
+    expect(out).toContain('$y$')
+    expect(markdownToHtml(md)).not.toContain('data-latex')
+  })
+  it('exposes the formula for HTML export instead of dropping it', () => {
+    const html = markdownToHtml('값 $a_1$ 입니다\n\n$$\nb\n$$\n')
+    expect(html).toContain('data-latex="a_1"')
+    expect(html).toContain('data-latex="b"')
+  })
+  it('does not throw on malformed formulas and keeps their source', () => {
+    const out = normalizeMarkdown('깨진 $\\frac{1$ 수식\n')
+    expect(out).toContain('\\frac{1')
+  })
+})
+
