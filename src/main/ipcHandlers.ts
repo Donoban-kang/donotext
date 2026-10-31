@@ -4,7 +4,7 @@ import { IPC } from '../shared/ipc'
 import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
 import type { ImageService } from './services/imageService'
-import type { SessionStore } from './services/sessionStore'
+import type { SessionService } from './services/sessionService'
 import type { WatchService } from './services/watchService'
 
 const MAX_PATH = 4096
@@ -21,7 +21,7 @@ function bool(v: unknown, name: string): boolean {
 
 export interface IpcDeps {
   fs: FsService
-  sessions: SessionStore
+  sessions: SessionService
   watcher: WatchService
   images: ImageService
   exports: ExportService
@@ -37,7 +37,7 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
     const opts = { properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>, filters: [markdownFilter, allFilter] }
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     if (res.canceled) return []
-    res.filePaths.forEach((p) => fs.grant(p))
+    for (const p of res.filePaths) await sessions.grant(p)
     return Promise.all(res.filePaths.map((p) => fs.readFile(p)))
   })
 
@@ -47,7 +47,7 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     if (res.canceled || res.filePaths.length === 0) return null
     const root = res.filePaths[0]
-    fs.grant(root)
+    await sessions.grant(root)
     return { root, entries: await fs.readDir(root) }
   })
 
@@ -56,7 +56,7 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
     const opts = { defaultPath: typeof suggested === 'string' ? suggested : undefined, filters: [markdownFilter, allFilter] }
     const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
     if (res.canceled || !res.filePath) return null
-    fs.grant(res.filePath)
+    await sessions.grant(res.filePath)
     return res.filePath
   })
 
@@ -81,17 +81,7 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
     watcher.setPaths(paths.filter((p): p is string => typeof p === 'string' && p.length <= MAX_PATH && fs.isAllowed(p)))
   })
 
-  ipcMain.handle(IPC.loadSession, async () => {
-    const s = await sessions.load()
-    if (s) {
-      // The session file is written by this app into its own data folder; paths it lists
-      // were granted in the previous run, so grant them again for the restored workspace.
-      for (const d of s.docs) if (typeof d.path === 'string') fs.grant(d.path)
-      if (typeof s.folder === 'string') fs.grant(s.folder)
-      for (const p of s.recent) if (typeof p === 'string') fs.grant(p)
-    }
-    return s
-  })
+  ipcMain.handle(IPC.loadSession, () => sessions.load())
   ipcMain.handle(IPC.saveSession, (_e, s) => {
     if (typeof s !== 'object' || s === null || (s as { version?: unknown }).version !== 1) throw new Error('Invalid session')
     return sessions.save(s)

@@ -1,17 +1,21 @@
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile, open } from 'node:fs/promises'
+import { chmod, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, ReadResult, Warning } from '../../shared/fsTypes'
 import { decodeText, encodeText, type Eol } from '../../shared/textFormat'
 
 export interface FsServiceOptions {
+  /** Above this size a file opens source-only with a warning. */
   maxBytes?: number
+  /** Above this size a file is not read at all. */
+  hardMaxBytes?: number
   trash?: (path: string) => Promise<void>
 }
 
 export type { DirEntry, ReadResult, Warning }
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024
+const DEFAULT_HARD_MAX_BYTES = 64 * 1024 * 1024
 
 function assertValidName(name: string): void {
   if (!name || name === '.' || name === '..' || /[\\/\0]/.test(name)) {
@@ -22,10 +26,12 @@ function assertValidName(name: string): void {
 export class FsService {
   private readonly grants = new Set<string>()
   private readonly maxBytes: number
+  private readonly hardMaxBytes: number
   private readonly trash?: (path: string) => Promise<void>
 
   constructor(opts: FsServiceOptions = {}) {
     this.maxBytes = opts.maxBytes ?? DEFAULT_MAX_BYTES
+    this.hardMaxBytes = opts.hardMaxBytes ?? DEFAULT_HARD_MAX_BYTES
     this.trash = opts.trash
   }
 
@@ -51,6 +57,7 @@ export class FsService {
   async readFile(path: string): Promise<ReadResult> {
     const p = this.assertAllowed(path)
     const size = (await stat(p)).size
+    if (size > this.hardMaxBytes) throw new Error(`File is too large to open (${size} bytes)`)
     const decoded = decodeText(new Uint8Array(await readFile(p)))
     const tooLarge = size > this.maxBytes
     const result: ReadResult = {
@@ -67,24 +74,33 @@ export class FsService {
   }
 
   async writeFile(path: string, text: string, eol: Eol, bom: boolean): Promise<void> {
-    const p = this.assertAllowed(path)
-    const tmp = join(dirname(p), `.${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}.tmp`)
-    await writeFile(tmp, encodeText(text, eol, bom))
-    try {
-      await rename(tmp, p)
-    } catch (e) {
-      await rm(tmp, { force: true })
-      throw e
-    }
+    await this.atomicWrite(path, encodeText(text, eol, bom))
   }
 
   /** Writes raw bytes (e.g. a PDF) to an allowed path, replacing the file atomically. */
   async writeBinary(path: string, bytes: Uint8Array): Promise<void> {
-    const p = this.assertAllowed(path)
-    const tmp = join(dirname(p), `.${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}.tmp`)
+    await this.atomicWrite(path, bytes)
+  }
+
+  /**
+   * Temp file + rename, so a crash never leaves a half-written document. The write goes to the
+   * link's target (a symlink stays a symlink) and the original permission bits are kept.
+   */
+  private async atomicWrite(path: string, bytes: Uint8Array): Promise<void> {
+    const requested = this.assertAllowed(path)
+    let target = requested
+    let mode: number | undefined
+    try {
+      target = await realpath(requested)
+      mode = (await stat(target)).mode & 0o7777
+    } catch {
+      // a new file (or a dangling link): nothing to preserve
+    }
+    const tmp = join(dirname(target), `.${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}.tmp`)
     await writeFile(tmp, bytes)
     try {
-      await rename(tmp, p)
+      if (mode !== undefined) await chmod(tmp, mode)
+      await rename(tmp, target)
     } catch (e) {
       await rm(tmp, { force: true })
       throw e

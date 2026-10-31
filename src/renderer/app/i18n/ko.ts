@@ -32,6 +32,7 @@ export const ko = {
   confirmDeleteBody: '삭제한 항목은 휴지통으로 이동합니다.',
   confirm: '확인',
   sessionRecovered: '저장하지 않았던 변경 내용 {count}건을 복구했습니다.',
+  sessionFileMissing: '"{path}" 파일을 찾을 수 없어, 저장하지 않았던 내용을 새 문서로 복구했습니다. 원하는 위치에 저장하세요.',
   fsFailed: '파일 작업에 실패했습니다: {reason}',
   imageNeedsSave: '이미지를 붙여넣으려면 먼저 문서를 저장하세요.',
   imageSaveFailed: '이미지를 저장하지 못했습니다: {reason}',

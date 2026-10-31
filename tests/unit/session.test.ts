@@ -101,15 +101,39 @@ describe('capture and restore', () => {
     expect(leaves.second).toBe(restoredLeaves[1].id)
   })
 
-  it('skips files that no longer exist and removes their tabs without failing', async () => {
+  it('keeps unsaved edits of a file that has gone missing by reopening them as an untitled document', async () => {
     const { api, controller, notify } = await scenario()
-    controller.files.delete('/w/a.md')
+    controller.files.delete('/w/a.md') // moved, renamed or on an unmounted drive
     const next = stores()
     expect(await restoreSession({ api, ...next, notify })).toBe(true)
-    const paths = Object.values(next.documents.getState().docs).map((d) => d.path)
-    expect(paths).not.toContain('/w/a.md')
-    const tabCount = allLeaves(next.layout.getState().root).flatMap((l) => l.tabs).length
-    expect(tabCount).toBe(2)
+    const docs = Object.values(next.documents.getState().docs)
+    expect(docs.map((d) => d.path)).not.toContain('/w/a.md')
+    const rescued = docs.find((d) => d.text === '# A 수정\n')
+    expect(rescued).toBeDefined()
+    expect(rescued!.path).toBeNull()
+    expect(next.documents.getState().isDirty(rescued!.id)).toBe(true)
+    expect(next.layout.getState().docRefs(rescued!.id)).toBe(1) // still has a tab
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning' }))
+  })
+
+  it('drops a missing file that has no unsaved edits, without failing', async () => {
+    const { api, controller, notify } = await scenario()
+    controller.files.delete('/w/한글 문서.md') // this one has no backup
+    const next = stores()
+    expect(await restoreSession({ api, ...next, notify })).toBe(true)
+    expect(Object.values(next.documents.getState().docs).some((d) => d.name.includes('한글'))).toBe(false)
+    expect(allLeaves(next.layout.getState().root).flatMap((l) => l.tabs)).toHaveLength(2)
+  })
+
+  it('recovers a backup whose document is not in the saved session', async () => {
+    const { api, notify } = await scenario()
+    await api.writeBackup('orphan-1', '세션에 없는 문서의 내용')
+    const next = stores()
+    await restoreSession({ api, ...next, notify })
+    const orphan = Object.values(next.documents.getState().docs).find((d) => d.text === '세션에 없는 문서의 내용')
+    expect(orphan).toBeDefined()
+    expect(orphan!.path).toBeNull()
+    expect(await api.loadBackups()).not.toHaveProperty('orphan-1')
   })
 
   it('drops an untitled document that has no backup content', async () => {

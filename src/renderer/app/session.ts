@@ -70,39 +70,64 @@ export async function restoreSession(deps: RestoreDeps): Promise<boolean> {
   }
 
   const idMap = new Map<string, string>()
+  const consumed = new Set<string>() // backups whose content now lives in an open document
   let recovered = 0
+  const missing: string[] = []
+
   for (const entry of session.docs) {
     const backup = backups[entry.id]
-    let id: string
+    let id: string | null = null
     if (entry.path) {
       try {
         id = documents.getState().open(await api.readFile(entry.path))
       } catch {
-        continue // the file is gone: its tabs are dropped
+        // The file is gone (moved, renamed, unmounted drive). Unsaved edits must not be lost with it.
+        if (backup !== undefined && backup !== '') {
+          id = documents.getState().openUntitled()
+          missing.push(entry.path)
+        }
       }
-    } else {
-      if (!backup) continue // an empty untitled document is not worth bringing back
-      id = documents.getState().openUntitled()
+    } else if (backup) {
+      id = documents.getState().openUntitled() // an empty untitled document is not worth bringing back
     }
+    if (id === null) continue
     idMap.set(entry.id, id)
-    if (backup !== undefined && backup !== documents.getState().docs[id].text) {
-      documents.getState().setText(id, backup, 'restore')
-      recovered++
+    if (backup !== undefined) {
+      consumed.add(entry.id)
+      if (backup !== documents.getState().docs[id].text) {
+        documents.getState().setText(id, backup, 'restore')
+        recovered++
+      }
     }
+  }
+
+  // Backups of documents that never made it into the saved session are recovered too.
+  const known = new Set(session.docs.map((d) => d.id))
+  const orphans: string[] = []
+  for (const [oldId, text] of Object.entries(backups)) {
+    if (known.has(oldId) || !text) continue
+    const id = documents.getState().openUntitled()
+    documents.getState().setText(id, text, 'restore')
+    orphans.push(id)
+    consumed.add(oldId)
+    recovered++
   }
 
   layout.getState().setRoot(remapDocIds(session.layout, idMap))
   if (allLeaves(layout.getState().root).some((l) => l.id === session!.activeLeafId)) {
     layout.getState().focusLeaf(session.activeLeafId)
   }
+  for (const id of orphans) layout.getState().openTabInActive({ kind: 'doc', docId: id, view: 'wysiwyg' })
   workspace.getState().setRoot(session.folder)
   workspace.getState().setRecent(session.recent)
 
-  // Persist the recovered edits under their new ids first, only then drop the previous run's backups.
+  // Persist the recovered edits under their new ids first, only then drop the backups that were used.
+  // Backups that could not be placed anywhere stay on disk for the next start.
   await createBackupWriter({ api, documents }).tick()
-  await Promise.all(Object.keys(backups).map((id) => api.clearBackup(id).catch(() => undefined)))
+  await Promise.all([...consumed].map((id) => api.clearBackup(id).catch(() => undefined)))
 
   if (recovered > 0) notify({ kind: 'info', message: t('sessionRecovered', { count: String(recovered) }) })
+  for (const path of missing) notify({ kind: 'warning', message: t('sessionFileMissing', { path }) })
   return true
 }
 

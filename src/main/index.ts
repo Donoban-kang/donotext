@@ -12,6 +12,8 @@ import { FsService } from './services/fsService'
 import { ExportService } from './services/exportService'
 import { handleImageRequest } from './services/imageProtocol'
 import { ImageService } from './services/imageService'
+import { GrantStore } from './services/grantStore'
+import { SessionService } from './services/sessionService'
 import { SessionStore } from './services/sessionStore'
 import { WatchService } from './services/watchService'
 
@@ -85,7 +87,7 @@ void app.whenReady().then(() => {
       },
       renderPdf
     }),
-    sessions: new SessionStore(app.getPath('userData')),
+    sessions: new SessionService(new SessionStore(app.getPath('userData')), new GrantStore(app.getPath('userData')), fsService),
     watcher,
     getWindow: () => mainWindow
   })
