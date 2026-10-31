@@ -29,7 +29,11 @@ export const IPC = {
   exportHtml: 'export:html',
   exportPdf: 'export:pdf',
   saveImage: 'image:save',
-  openExternal: 'app:openExternal'
+  openExternal: 'app:openExternal',
+  requestClose: 'app:requestClose',
+  closeResponse: 'app:closeResponse',
+  openPaths: 'app:openPaths',
+  takeOpenPaths: 'app:takeOpenPaths'
 } as const
 
 export interface DonotextApi {
@@ -54,4 +58,11 @@ export interface DonotextApi {
   exportPdf(html: string, suggestedName: string, docPath: string | null): Promise<string | null>
   saveImage(docPath: string | null, bytes: Uint8Array, ext: string): Promise<string>
   openExternal(url: string): Promise<void>
+  /** The window is about to close; answer with respondToClose(true) to allow it. */
+  onCloseRequested(cb: () => void): () => void
+  respondToClose(canClose: boolean): void
+  /** Files the OS asked us to open (double-click, `donotext file.md`, second launch). */
+  onOpenPaths(cb: (paths: string[]) => void): () => void
+  /** Paths queued before the renderer was ready; returns and clears them. */
+  takeOpenPaths(): Promise<string[]>
 }

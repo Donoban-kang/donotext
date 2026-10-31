@@ -20,6 +20,29 @@ export async function startAppServices(): Promise<void> {
     // A broken session must never keep the app from starting.
   }
 
+  // Files handed to us by the OS (double-click, command line, second launch).
+  const openFromOs = (paths: string[]): void => paths.forEach((p) => void getCommands().openPath(p))
+  try {
+    openFromOs(await api.takeOpenPaths())
+  } catch {
+    // not fatal
+  }
+  api.onOpenPaths(openFromOs)
+
+  // Closing the window: offer to save modified documents first.
+  let asking = false
+  api.onCloseRequested(() => {
+    if (asking) return
+    asking = true
+    void getCommands()
+      .confirmQuit()
+      .then((ok) => api.respondToClose(ok))
+      .catch(() => api.respondToClose(false))
+      .finally(() => {
+        asking = false
+      })
+  })
+
   startSessionPersistence({ api, ...stores })
   startBackups({ api, documents: useDocuments })
   startExternalWatcher({ api, documents: useDocuments })

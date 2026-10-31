@@ -10,6 +10,7 @@ declare global {
     __DONOTEXT_SEED__?: Record<string, string>
     __DONOTEXT_SESSION__?: import('../shared/session').SessionData
     __DONOTEXT_BACKUPS__?: Record<string, string>
+    __DONOTEXT_OPEN_PATHS__?: string[]
     /** Present only in browser mode; lets e2e tests inspect state. */
     __stores?: {
       documents: typeof import('./store/documents').useDocuments

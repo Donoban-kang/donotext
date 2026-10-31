@@ -14,7 +14,8 @@ async function boot(): Promise<void> {
   if (!window.api) {
     const mock = createMockApi(window.__DONOTEXT_SEED__, {
       session: window.__DONOTEXT_SESSION__,
-      backups: window.__DONOTEXT_BACKUPS__
+      backups: window.__DONOTEXT_BACKUPS__,
+      openPaths: window.__DONOTEXT_OPEN_PATHS__
     })
     window.api = mock.api
     window.__mock = mock.controller

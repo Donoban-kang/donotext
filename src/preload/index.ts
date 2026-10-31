@@ -27,7 +27,23 @@ const api: DonotextApi = {
   exportHtml: (html, name, docPath) => ipcRenderer.invoke(IPC.exportHtml, html, name, docPath),
   exportPdf: (html, name, docPath) => ipcRenderer.invoke(IPC.exportPdf, html, name, docPath),
   saveImage: (docPath, bytes, ext) => ipcRenderer.invoke(IPC.saveImage, docPath, bytes, ext),
-  openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url)
+  openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
+  onCloseRequested: (cb) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.requestClose, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC.requestClose, listener)
+    }
+  },
+  respondToClose: (canClose) => ipcRenderer.send(IPC.closeResponse, canClose),
+  onOpenPaths: (cb) => {
+    const listener = (_e: unknown, paths: string[]): void => cb(paths)
+    ipcRenderer.on(IPC.openPaths, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC.openPaths, listener)
+    }
+  },
+  takeOpenPaths: () => ipcRenderer.invoke(IPC.takeOpenPaths)
 }
 
 contextBridge.exposeInMainWorld('api', api)

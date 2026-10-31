@@ -161,6 +161,25 @@ describe('markSaved with the text that was actually written', () => {
   })
 })
 
+describe('discardChanges', () => {
+  it('reverts to the last saved text, tells the editors and becomes clean', () => {
+    const id = store.getState().open(read())
+    store.getState().setText(id, 'unwanted edit', 'p')
+    const cb = vi.fn()
+    store.getState().subscribeText(id, cb)
+    store.getState().discardChanges(id)
+    expect(store.getState().docs[id].text).toBe('* item\n')
+    expect(store.getState().isDirty(id)).toBe(false)
+    expect(cb).toHaveBeenCalledWith('* item\n', 'discard')
+  })
+  it('does nothing for a clean document', () => {
+    const id = store.getState().open(read())
+    const v = store.getState().docs[id].version
+    store.getState().discardChanges(id)
+    expect(store.getState().docs[id].version).toBe(v)
+  })
+})
+
 describe('save and reload', () => {
   it('keeps CRLF and BOM through markSaved', () => {
     const id = store.getState().open(read({ eol: 'crlf', bom: true }))

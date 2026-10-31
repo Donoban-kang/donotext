@@ -18,6 +18,12 @@ export interface MockController {
   files: Map<string, Stored>
   /** Every set of paths the app asked to watch, in order. */
   watchCalls: string[][]
+  /** Simulates the user closing the window / the OS asking to open files. */
+  requestClose(): void
+  pushOpenPaths(paths: string[]): void
+  queueInitialOpenPaths(paths: string[]): void
+  /** Answers the renderer gave to close requests, in order. */
+  closeResponses: boolean[]
 }
 
 function parentOf(path: string): string {
@@ -32,7 +38,7 @@ function join(dir: string, name: string): string {
 /** In-memory DonotextApi used when `window.api` is absent (browser mode, tests). */
 export function createMockApi(
   seed: Record<string, string> = {},
-  initial: { session?: SessionData | null; backups?: Record<string, string> } = {}
+  initial: { session?: SessionData | null; backups?: Record<string, string>; openPaths?: string[] } = {}
 ): { api: DonotextApi; controller: MockController } {
   const files = new Map<string, Stored>()
   const dirs = new Set<string>()
@@ -44,6 +50,10 @@ export function createMockApi(
   const backups = new Map<string, string>(Object.entries(initial.backups ?? {}))
   let imageCounter = 0
   const watchCalls: string[][] = []
+  const closeListeners = new Set<() => void>()
+  const openPathListeners = new Set<(paths: string[]) => void>()
+  const closeResponses: boolean[] = []
+  let initialOpenPaths: string[] = [...(initial.openPaths ?? [])]
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
 
@@ -159,6 +169,26 @@ export function createMockApi(
       imageCounter += 1
       return `assets/img-${Date.now()}-${imageCounter}.${ext.toLowerCase()}`
     },
+    onCloseRequested(cb) {
+      closeListeners.add(cb)
+      return () => {
+        closeListeners.delete(cb)
+      }
+    },
+    respondToClose(canClose) {
+      closeResponses.push(canClose)
+    },
+    onOpenPaths(cb) {
+      openPathListeners.add(cb)
+      return () => {
+        openPathListeners.delete(cb)
+      }
+    },
+    async takeOpenPaths() {
+      const out = initialOpenPaths
+      initialOpenPaths = []
+      return out
+    },
     async openExternal(url) {
       let u: URL
       try {
@@ -176,7 +206,13 @@ export function createMockApi(
     queueSaveAs: (p) => void saveAsQueue.push(p),
     emitChange: (e) => listeners.forEach((l) => l(e)),
     files,
-    watchCalls
+    watchCalls,
+    closeResponses,
+    requestClose: () => closeListeners.forEach((l) => l()),
+    pushOpenPaths: (paths) => openPathListeners.forEach((l) => l(paths)),
+    queueInitialOpenPaths: (paths) => {
+      initialOpenPaths = paths
+    }
   }
   return { api, controller }
 }

@@ -217,6 +217,27 @@ export function createCommands(deps: CommandDeps) {
     lay().setScrollLink({ a: leaves[i].id, b: leaves[(i + 1) % leaves.length].id })
   }
 
+  /**
+   * Called when the window is about to close: offers to save every modified document.
+   * Resolves to false when the user cancels (or a save fails), meaning the app must stay open.
+   */
+  async function confirmQuit(): Promise<boolean> {
+    flush() // the last keystrokes are still in the editors' debounce window
+    for (const d of Object.values(docs().docs)) {
+      if (!docs().isDirty(d.id)) continue
+      const choice = await confirmUnsaved(d.name)
+      if (choice === 'cancel') return false
+      if (choice === 'save') {
+        if (!(await saveDoc(d.id))) return false
+      } else {
+        docs().discardChanges(d.id)
+      }
+      // Either way nothing unsaved is left, so the crash backup must not resurrect it next time.
+      await api.clearBackup(d.id).catch(() => undefined)
+    }
+    return true
+  }
+
   function toggleView(): void {
     const a = lay().getActiveTab()
     if (!a || a.tab.kind !== 'doc') return
@@ -225,7 +246,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, exportActive, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>

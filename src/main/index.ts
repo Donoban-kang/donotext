@@ -1,9 +1,11 @@
-import { app, BrowserWindow, dialog, Menu, protocol, session, shell } from 'electron'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session, shell } from 'electron'
+import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
+import { CloseGate } from './closeGate'
+import { filePathsFromArgv } from './launchArgs'
 import { buildMenuTemplate } from './menu'
 import { registerIpc } from './ipcHandlers'
 import { IPC } from '../shared/ipc'
@@ -23,6 +25,20 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let mainWindow: BrowserWindow | null = null
+const closeGate = new CloseGate()
+
+// Only one copy may run: two copies would restore the same session and delete each other's backups.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) app.quit()
+
+// Files the OS asks us to open before the app is ready (macOS open-file arrives very early).
+const earlyOpenPaths: string[] = []
+app.on('open-file', (event, path) => {
+  event.preventDefault()
+  earlyOpenPaths.push(path)
+  if (requestOpen) void requestOpen([path])
+})
+let requestOpen: ((paths: string[]) => Promise<void>) | null = null
 
 /** Renders a complete HTML document to PDF in a hidden window that cannot run scripts. */
 async function renderPdf(html: string): Promise<Uint8Array> {
@@ -56,13 +72,22 @@ function createWindow(): BrowserWindow {
   if (devUrl) void win.loadURL(devUrl)
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
   mainWindow = win
+  // The renderer asks about unsaved changes before a window may close.
+  win.on('close', (event) => {
+    if (closeGate.attempt() === 'allow') return
+    event.preventDefault()
+    win.webContents.send(IPC.requestClose)
+  })
+  win.webContents.on('render-process-gone', () => closeGate.markUnavailable())
+  win.on('unresponsive', () => closeGate.markUnavailable())
   win.on('closed', () => {
     mainWindow = null
+    closeGate.reset()
   })
   return win
 }
 
-void app.whenReady().then(() => {
+if (gotLock) void app.whenReady().then(() => {
   session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
     cb({
       responseHeaders: {
@@ -74,6 +99,7 @@ void app.whenReady().then(() => {
   const watcher = new WatchService((e) => mainWindow?.webContents.send(IPC.fileChanged, e))
   app.on('before-quit', () => void watcher.close())
   const fsService = new FsService({ trash: (p) => shell.trashItem(p) })
+  const sessions = new SessionService(new SessionStore(app.getPath('userData')), new GrantStore(app.getPath('userData')), fsService)
   const imageService = new ImageService(fsService)
   protocol.handle(IMAGE_SCHEME, (request) => handleImageRequest(request, fsService))
   registerIpc({
@@ -87,10 +113,48 @@ void app.whenReady().then(() => {
       },
       renderPdf
     }),
-    sessions: new SessionService(new SessionStore(app.getPath('userData')), new GrantStore(app.getPath('userData')), fsService),
+    sessions,
     watcher,
     getWindow: () => mainWindow
   })
+
+  // Files the user asked the OS to open with us. Launching with a path is the user's approval to use it.
+  const pendingOpen: string[] = []
+  let rendererReady = false
+  requestOpen = async (paths) => {
+    const files: string[] = []
+    for (const p of paths) {
+      try {
+        if ((await stat(p)).isFile()) {
+          await sessions.grant(p)
+          files.push(p)
+        }
+      } catch {
+        // missing or unreadable: ignore
+      }
+    }
+    if (files.length === 0) return
+    if (rendererReady && mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+      mainWindow.webContents.send(IPC.openPaths, files)
+    } else pendingOpen.push(...files)
+  }
+  ipcMain.handle(IPC.takeOpenPaths, () => {
+    rendererReady = true
+    return pendingOpen.splice(0)
+  })
+  ipcMain.on(IPC.closeResponse, (_e, canClose: unknown) => {
+    if (closeGate.respond(canClose === true)) mainWindow?.close()
+  })
+  app.on('second-instance', (_e, argv, cwd) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+    void requestOpen?.(filePathsFromArgv(argv, app.isPackaged, cwd))
+  })
+  void requestOpen([...filePathsFromArgv(process.argv, app.isPackaged, process.cwd()), ...earlyOpenPaths])
   const template = buildMenuTemplate({ isMac: process.platform === 'darwin', isDev: !app.isPackaged, appName: app.name })
   Menu.setApplicationMenu(template ? Menu.buildFromTemplate(template) : null)
   createWindow()

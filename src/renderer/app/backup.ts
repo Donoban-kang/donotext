@@ -1,4 +1,5 @@
 import type { DonotextApi } from '../../shared/ipc'
+import { flushAllEditors } from '../editor/sync'
 import type { createDocumentsStore } from '../store/documents'
 
 export interface BackupDeps {
@@ -55,7 +56,10 @@ export function startBackups(deps: BackupDeps, intervalMs = 30_000, afterEditMs 
       void writer.tick()
     }, afterEditMs)
   })
-  const onHide = (): void => void writer.tick()
+  const onHide = (): void => {
+    flushAllEditors() // the last keystrokes may still be inside an editor's debounce window
+    void writer.tick()
+  }
   window.addEventListener('beforeunload', onHide)
   return () => {
     clearInterval(interval)

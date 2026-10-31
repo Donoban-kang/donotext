@@ -31,6 +31,8 @@ export interface DocumentsState {
   markSaved(id: string, path?: string, writtenText?: string): void
   reload(id: string, r: ReadResult): void
   setExternal(id: string, state: Doc['external']): void
+  /** Throws away unsaved edits and returns to the last saved text. */
+  discardChanges(id: string): void
   /** Repoints documents at `oldPath` (or inside it, for folders) to `newPath`. */
   renamePath(oldPath: string, newPath: string): void
   close(id: string): void
@@ -153,6 +155,13 @@ export function createDocumentsStore() {
       }
       set((s) => ({ docs: { ...s.docs, [id]: next } }))
       notify(id, r.text, 'reload')
+    },
+
+    discardChanges(id) {
+      const doc = get().docs[id]
+      if (!doc || doc.text === doc.baseline) return
+      set((s) => ({ docs: { ...s.docs, [id]: { ...doc, text: doc.baseline, version: doc.version + 1 } } }))
+      notify(id, doc.baseline, 'discard')
     },
 
     setExternal(id, state) {

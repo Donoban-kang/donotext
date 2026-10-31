@@ -4,6 +4,7 @@ import { allLeaves, parseLayout, remapDocIds } from '../layout/tree'
 import type { createDocumentsStore } from '../store/documents'
 import type { createLayoutStore } from '../store/layoutStore'
 import type { createWorkspaceStore } from '../store/workspace'
+import { flushAllEditors } from '../editor/sync'
 import { createBackupWriter } from './backup'
 import { t } from './i18n'
 import type { Toast } from './commands'
@@ -143,7 +144,10 @@ export function startSessionPersistence(deps: SessionStores & { api: DonotextApi
     timer = setTimeout(save, delayMs)
   }
   const unsubs = [deps.documents.subscribe(schedule), deps.layout.subscribe(schedule), deps.workspace.subscribe(schedule)]
-  const onHide = (): void => save()
+  const onHide = (): void => {
+    flushAllEditors()
+    save()
+  }
   window.addEventListener('beforeunload', onHide)
   return () => {
     unsubs.forEach((u) => u())
