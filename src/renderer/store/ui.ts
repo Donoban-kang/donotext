@@ -8,6 +8,8 @@ export interface ConfirmOptions {
 }
 
 interface DialogState {
+  compareOpen: boolean
+  setCompareOpen(open: boolean): void
   unsaved: { name: string; resolve: (c: UnsavedChoice) => void } | null
   confirm: (ConfirmOptions & { resolve: (ok: boolean) => void }) | null
   ask(name: string): Promise<UnsavedChoice>
@@ -17,6 +19,8 @@ interface DialogState {
 }
 
 export const useDialogs = create<DialogState>()((set, get) => ({
+  compareOpen: false,
+  setCompareOpen: (open) => set({ compareOpen: open }),
   unsaved: null,
   confirm: null,
   askConfirm(opts) {

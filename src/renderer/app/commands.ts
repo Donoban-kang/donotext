@@ -166,6 +166,17 @@ export function createCommands(deps: CommandDeps) {
     return true
   }
 
+  /** Opens a side-by-side comparison of two open documents in the active pane. */
+  function compareDocs(leftDocId: string, rightDocId: string): boolean {
+    const d = docs().docs
+    if (leftDocId === rightDocId || !d[leftDocId] || !d[rightDocId]) {
+      notify({ kind: 'warning', message: t('compareNeedsTwo') })
+      return false
+    }
+    lay().openTabInActive({ kind: 'compare', leftDocId, rightDocId })
+    return true
+  }
+
   function focusPane(delta: number): void {
     lay().focusRelative(delta)
   }
@@ -190,7 +201,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, reloadFromDisk, keepLocal, splitActive, closePane, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>

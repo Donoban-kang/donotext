@@ -346,3 +346,56 @@ describe('pane commands', () => {
     expect(ctx.layout.getState().scrollLink).toBeNull()
   })
 })
+
+describe('compareDocs', () => {
+  function twoDocs(ctx: ReturnType<typeof setup>): [string, string] {
+    const a = ctx.documents.getState().open({ path: '/w/a.md', text: 'a\n', eol: 'lf', bom: false, kind: 'markdown', readOnly: false })
+    const b = ctx.documents.getState().open({ path: '/w/b.md', text: 'b\n', eol: 'lf', bom: false, kind: 'markdown', readOnly: false })
+    return [a, b]
+  }
+  it('opens a compare tab for two different open documents', () => {
+    const ctx = setup()
+    const [a, b] = twoDocs(ctx)
+    expect(ctx.commands.compareDocs(a, b)).toBe(true)
+    expect(ctx.layout.getState().getActiveTab()!.tab).toEqual({ kind: 'compare', leftDocId: a, rightDocId: b })
+  })
+  it('does not open the same comparison twice', () => {
+    const ctx = setup()
+    const [a, b] = twoDocs(ctx)
+    ctx.commands.compareDocs(a, b)
+    ctx.commands.compareDocs(a, b)
+    const leaf = findLeaf(ctx.layout.getState().root, ctx.layout.getState().activeLeafId)!
+    expect(leaf.tabs).toHaveLength(1)
+  })
+  it('refuses to compare a document with itself or with an unknown document', () => {
+    const ctx = setup()
+    const [a] = twoDocs(ctx)
+    expect(ctx.commands.compareDocs(a, a)).toBe(false)
+    expect(ctx.commands.compareDocs(a, 'missing')).toBe(false)
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning' }))
+    expect(ctx.layout.getState().getActiveTab()).toBeNull()
+  })
+  it('closing a compare tab asks about modified documents that no other tab shows, then closes them', async () => {
+    const ctx = setup(undefined, 'discard')
+    const [a, b] = twoDocs(ctx)
+    ctx.commands.compareDocs(a, b)
+    ctx.documents.getState().setText(b, 'changed', 'p')
+    expect(await ctx.commands.closeTab(ctx.layout.getState().activeLeafId, 0)).toBe(true)
+    expect(ctx.confirmUnsaved).toHaveBeenCalledTimes(1)
+    expect(ctx.confirmUnsaved).toHaveBeenCalledWith('b.md')
+    expect(Object.keys(ctx.documents.getState().docs)).toHaveLength(0)
+  })
+  it('closing a compare tab keeps documents that are still open in their own tabs', async () => {
+    const ctx = setup({ '/w/a.md': 'a\n', '/w/b.md': 'b\n' })
+    const a = await openA(ctx, '/w/a.md')
+    const b = await openA(ctx, '/w/b.md')
+    ctx.commands.compareDocs(a, b)
+    ctx.documents.getState().setText(b, 'changed', 'p')
+    const leaf = ctx.layout.getState().activeLeafId
+    const idx = findLeaf(ctx.layout.getState().root, leaf)!.tabs.findIndex((t) => t.kind === 'compare')
+    expect(await ctx.commands.closeTab(leaf, idx)).toBe(true)
+    expect(ctx.confirmUnsaved).not.toHaveBeenCalled()
+    expect(ctx.documents.getState().docs[a]).toBeDefined()
+    expect(ctx.documents.getState().docs[b]).toBeDefined()
+  })
+})

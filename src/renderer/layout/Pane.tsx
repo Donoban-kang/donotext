@@ -1,6 +1,7 @@
 import type React from 'react'
 import { getCommands } from '../app/appCommands'
 import { t } from '../app/i18n'
+import { CompareView } from '../editor/CompareView'
 import { SourceEditor } from '../editor/SourceEditor'
 import { WysiwygEditor } from '../editor/WysiwygEditor'
 import { useDocuments } from '../store/documents'
@@ -12,7 +13,13 @@ function PaneBody({ leaf }: { leaf: Leaf }): React.ReactElement {
   const tab = leaf.tabs[leaf.active]
   const doc = useDocuments((s) => (tab?.kind === 'doc' ? s.docs[tab.docId] : undefined))
   if (!tab) return <div className="dn-empty">{t('emptyPane')}</div>
-  if (tab.kind === 'compare') return <div className="dn-empty">{t('compareUnavailable')}</div>
+  if (tab.kind === 'compare') {
+    return (
+      <div className="dn-editor-area">
+        <CompareView key={`${tab.leftDocId}:${tab.rightDocId}`} leftDocId={tab.leftDocId} rightDocId={tab.rightDocId} paneId={leaf.id} />
+      </div>
+    )
+  }
   if (!doc) return <div className="dn-empty" />
   const view = doc.sourceOnly ? 'source' : tab.view
   return (

@@ -10,7 +10,8 @@ import { useWorkspace } from '../store/workspace'
 import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
-import { ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
+import { useDialogs } from '../store/ui'
+import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
 import './app.css'
 
 export function App(): React.ReactElement {
@@ -52,6 +53,8 @@ export function App(): React.ReactElement {
 
   const leafCount = useLayout((s) => allLeaves(s.root).length)
   const linked = useLayout((s) => s.scrollLink !== null)
+  const docCount = useDocuments((s) => Object.keys(s.docs).length)
+  const setCompareOpen = useDialogs((s) => s.setCompareOpen)
   const autoSave = useSettings((s) => s.autoSave)
   const setAutoSave = useSettings((s) => s.setAutoSave)
   const recent = useWorkspace((s) => s.recent)
@@ -75,6 +78,9 @@ export function App(): React.ReactElement {
         </button>
         <button disabled={leafCount < 2} aria-pressed={linked} onClick={() => c.toggleScrollLink()}>
           {t('scrollLinkOn')}
+        </button>
+        <button disabled={docCount < 2} onClick={() => setCompareOpen(true)}>
+          {t('compare')}
         </button>
         <span className="dn-toolbar-sep" />
         <select
@@ -103,6 +109,7 @@ export function App(): React.ReactElement {
       <ScrollLinkController />
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
+      <CompareDialog />
       <Toasts />
     </div>
   )

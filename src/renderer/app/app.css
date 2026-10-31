@@ -60,3 +60,10 @@ body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-s
 .dn-divider-row { width: 6px; cursor: col-resize; }
 .dn-divider-col { height: 6px; cursor: row-resize; }
 .dn-divider:hover, .dn-divider:focus-visible { background: rgba(60,120,240,.6); outline: none; }
+
+.dn-compare { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.dn-compare-bar { display: flex; gap: 10px; align-items: center; padding: 4px 10px; border-bottom: 1px solid rgba(127,127,127,.35); font-size: 13px; flex-wrap: wrap; }
+.dn-compare-name { font-weight: 600; }
+.dn-compare-host { flex: 1; min-height: 0; overflow: auto; }
+.dn-compare-host .cm-mergeView { height: auto; }
+.dn-compare-pick { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; font-size: 13px; }
