@@ -8,16 +8,19 @@ import { t } from '../app/i18n'
 import { useSettings } from '../store/settings'
 import { useToasts } from '../store/ui'
 import { useDocuments } from '../store/documents'
-import { parseMarkdown, serializeMarkdown } from './markdown/codec'
+import { normalizeMarkdown, parseMarkdown, serializeMarkdown } from './markdown/codec'
 import { ImageDisplay } from './imageDisplay'
 import { FocusMode } from './focusMode'
 import { typewriterScrollDelta } from './typewriter'
 import { FindPanel } from './FindPanel'
 import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
+import { merge3 } from './merge3'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
 import 'katex/dist/katex.min.css'
 import './editor.css'
+
+const COMPOSITION_SETTLE_MS = 60
 
 function toContent(md: string): JSONContent {
   const json = parseMarkdown(md)
@@ -35,6 +38,8 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   const typewriterMode = useSettings((s) => s.typewriterMode)
   const composing = useRef(false)
   const pendingRemote = useRef<string | null>(null)
+  const compositionBase = useRef('')
+  const forcing = useRef(false)
   const suppress = useRef(false)
   const debouncer = useRef(createDebouncer(EDIT_DEBOUNCE_MS))
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
@@ -74,6 +79,8 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     onUpdate: ({ editor: ed }) => {
       if (suppress.current) return
       debouncer.current.call(() => {
+        // Half-composed syllables are not pushed to other panes; finishComposition() sends the result.
+        if (composing.current && !forcing.current) return
         const next = serializeMarkdown(ed.getJSON())
         const d = useDocuments.getState().docs[docId]
         // Loading can make the editor touch its document (e.g. add a trailing paragraph). That is not
@@ -94,13 +101,12 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
       handleDOMEvents: {
         compositionstart: () => {
           composing.current = true
+          compositionBase.current = useDocuments.getState().docs[docId]?.text ?? ''
           return false
         },
         compositionend: () => {
-          composing.current = false
-          const text = pendingRemote.current
-          pendingRemote.current = null
-          if (text !== null) queueMicrotask(() => applyRemote(text))
+          // ProseMirror reads the composed text from the DOM a moment after this event.
+          setTimeout(finishComposition, COMPOSITION_SETTLE_MS)
           return false
         }
       }
@@ -108,6 +114,28 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   })
 
   editorRef.current = editor
+
+  /**
+   * After a Hangul/IME composition: other panes may have changed the document meanwhile. Merge their
+   * changes with what was just composed instead of overwriting either side.
+   */
+  const finishComposition = (): void => {
+    composing.current = false
+    const remote = pendingRemote.current
+    pendingRemote.current = null
+    if (!editor || editor.isDestroyed) return
+    if (remote === null) {
+      debouncer.current.flush()
+      return
+    }
+    const local = serializeMarkdown(editor.getJSON())
+    const merged = merge3(normalizeMarkdown(compositionBase.current), local, normalizeMarkdown(remote))
+    const text = merged ?? local
+    if (merged === null) useToasts.getState().push({ kind: 'warning', message: t('mergeConflict') })
+    debouncer.current.cancel()
+    if (text !== local) applyRemote(text)
+    useDocuments.getState().setText(docId, text, paneId)
+  }
 
   const applyRemote = (text: string): void => {
     if (!editor || editor.isDestroyed) return
@@ -151,7 +179,11 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   useEffect(() => {
     if (!editor) return
     const deb = debouncer.current
-    const offFlush = registerFlusher(() => deb.flush())
+    const offFlush = registerFlusher(() => {
+      forcing.current = true // an explicit flush (save, close) must not wait for the composition
+      deb.flush()
+      forcing.current = false
+    })
     const offSub = useDocuments.getState().subscribeText(docId, (text, origin) => {
       if (origin !== paneId && composing.current) {
         pendingRemote.current = text
