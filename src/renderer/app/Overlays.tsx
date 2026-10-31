@@ -36,6 +36,38 @@ export function ConfirmUnsavedDialog(): React.ReactElement | null {
   )
 }
 
+export function ConfirmDialog(): React.ReactElement | null {
+  const state = useDialogs((s) => s.confirm)
+  const answer = useDialogs((s) => s.answerConfirm)
+  const okBtn = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (state) okBtn.current?.focus()
+  }, [state])
+  if (!state) return null
+  return (
+    <div className="dn-modal-backdrop">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dn-confirm-title"
+        className="dn-modal"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') answer(false)
+        }}
+      >
+        <h2 id="dn-confirm-title">{state.title}</h2>
+        {state.body && <p>{state.body}</p>}
+        <div className="dn-modal-actions">
+          <button ref={okBtn} onClick={() => answer(true)}>
+            {state.okLabel}
+          </button>
+          <button onClick={() => answer(false)}>{t('cancel')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Toasts(): React.ReactElement {
   const items = useToasts((s) => s.items)
   const dismiss = useToasts((s) => s.dismiss)

@@ -115,6 +115,22 @@ describe('setText and subscriptions', () => {
   })
 })
 
+describe('renamePath', () => {
+  it('repoints a renamed file and its display name', () => {
+    const id = store.getState().open(read({ path: '/w/a.md' }))
+    store.getState().renamePath('/w/a.md', '/w/b.md')
+    expect(store.getState().docs[id].path).toBe('/w/b.md')
+    expect(store.getState().docs[id].name).toBe('b.md')
+  })
+  it('repoints documents inside a renamed folder but not same-prefix siblings', () => {
+    const inside = store.getState().open(read({ path: '/w/dir/a.md' }))
+    const sibling = store.getState().open(read({ path: '/w/dir2/a.md' }))
+    store.getState().renamePath('/w/dir', '/w/folder')
+    expect(store.getState().docs[inside].path).toBe('/w/folder/a.md')
+    expect(store.getState().docs[sibling].path).toBe('/w/dir2/a.md')
+  })
+})
+
 describe('save and reload', () => {
   it('keeps CRLF and BOM through markSaved', () => {
     const id = store.getState().open(read({ eol: 'crlf', bom: true }))

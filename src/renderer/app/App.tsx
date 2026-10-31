@@ -1,11 +1,12 @@
 import type React from 'react'
 import { useEffect } from 'react'
 import { SplitView } from '../layout/SplitView'
+import { Sidebar } from '../sidebar/Sidebar'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
-import { ConfirmUnsavedDialog, Toasts } from './Overlays'
+import { ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
 import './app.css'
 
 export function App(): React.ReactElement {
@@ -51,10 +52,14 @@ export function App(): React.ReactElement {
           {activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}
         </button>
       </header>
-      <main className="dn-main">
-        <SplitView node={root} />
-      </main>
+      <div className="dn-body">
+        <Sidebar />
+        <main className="dn-main">
+          <SplitView node={root} />
+        </main>
+      </div>
       <ConfirmUnsavedDialog />
+      <ConfirmDialog />
       <Toasts />
     </div>
   )

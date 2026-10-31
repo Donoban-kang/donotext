@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   })
   await page.goto('/')
   await page.evaluate(() => window.__mock!.queueOpen(['/w/a.md']))
-  await page.getByRole('button', { name: '열기' }).click()
+  await page.getByRole('button', { name: '열기', exact: true }).click()
 })
 
 const editor = (page: import('@playwright/test').Page) => page.locator('.ProseMirror')

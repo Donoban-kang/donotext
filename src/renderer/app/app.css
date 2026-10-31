@@ -3,7 +3,8 @@ body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-s
 .dn-app { display: flex; flex-direction: column; height: 100%; }
 .dn-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid rgba(127,127,127,.35); }
 .dn-toolbar h1 { font-size: 15px; margin: 0 8px 0 0; }
-.dn-main { flex: 1; min-height: 0; display: flex; }
+.dn-body { flex: 1; min-height: 0; display: flex; }
+.dn-main { flex: 1; min-width: 0; min-height: 0; display: flex; }
 .dn-main > * { flex: 1; min-width: 0; }
 .dn-split { display: flex; min-width: 0; min-height: 0; height: 100%; width: 100%; }
 .dn-split-row { flex-direction: row; }
@@ -30,3 +31,22 @@ body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-s
 .dn-toast { padding: 8px 12px; border-radius: 6px; background: #333; color: #fff; max-width: 380px; font-size: 13px; cursor: pointer; }
 .dn-toast-error { background: #a32; }
 .dn-toast-warning { background: #8a6d00; }
+
+.dn-sidebar { width: 260px; flex: none; display: flex; flex-direction: column; border-right: 1px solid rgba(127,127,127,.35); min-height: 0; }
+.dn-sidebar-tabs { display: flex; border-bottom: 1px solid rgba(127,127,127,.35); }
+.dn-sidebar-tabs button { flex: 1; padding: 6px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.dn-sidebar-tabs button[aria-selected="true"] { font-weight: 600; background: rgba(127,127,127,.15); }
+.dn-sidebar-body { flex: 1; overflow: auto; min-height: 0; }
+.dn-sidebar-empty { opacity: .6; padding: 10px 12px; font-size: 13px; }
+.dn-tree-toolbar { display: flex; gap: 4px; padding: 6px 8px; flex-wrap: wrap; }
+.dn-tree-showall { display: block; padding: 0 10px 6px; font-size: 12px; }
+.dn-tree, .dn-tree ul, .dn-outline { list-style: none; margin: 0; padding: 0; }
+.dn-tree-row { display: flex; align-items: center; justify-content: space-between; padding-right: 6px; }
+.dn-tree-name { flex: 1; text-align: left; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dn-tree-row:hover { background: rgba(127,127,127,.12); }
+.dn-tree-actions { display: inline-flex; gap: 2px; opacity: 0; }
+.dn-tree-row:hover .dn-tree-actions, .dn-tree-row:focus-within .dn-tree-actions { opacity: 1; }
+.dn-tree-actions button { border: 0; background: transparent; cursor: pointer; color: inherit; }
+.dn-tree-error { color: #c33; font-size: 12px; display: block; }
+.dn-outline li button { border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; padding: 3px 8px; width: 100%; }
+.dn-outline li button:hover { background: rgba(127,127,127,.12); }

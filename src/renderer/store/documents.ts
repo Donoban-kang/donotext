@@ -28,6 +28,8 @@ export interface DocumentsState {
   markSaved(id: string, path?: string): void
   reload(id: string, r: ReadResult): void
   setExternal(id: string, state: Doc['external']): void
+  /** Repoints documents at `oldPath` (or inside it, for folders) to `newPath`. */
+  renamePath(oldPath: string, newPath: string): void
   close(id: string): void
   isDirty(id: string): boolean
   subscribeText(id: string, cb: TextListener): () => void
@@ -151,6 +153,19 @@ export function createDocumentsStore() {
       const doc = get().docs[id]
       if (!doc) return
       set((s) => ({ docs: { ...s.docs, [id]: { ...doc, external: state } } }))
+    },
+
+    renamePath(oldPath, newPath) {
+      set((s) => {
+        const docs: Record<string, Doc> = {}
+        for (const [id, d] of Object.entries(s.docs)) {
+          if (d.path === oldPath || d.path?.startsWith(`${oldPath}/`)) {
+            const path = newPath + d.path.slice(oldPath.length)
+            docs[id] = { ...d, path, name: baseName(path) }
+          } else docs[id] = d
+        }
+        return { docs }
+      })
     },
 
     close(id) {

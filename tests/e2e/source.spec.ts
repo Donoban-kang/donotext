@@ -7,7 +7,7 @@ async function openSeed(page: Page, seed: Record<string, string>, path: string):
   }, seed)
   await page.goto('/')
   await page.evaluate((p) => window.__mock!.queueOpen([p]), path)
-  await page.getByRole('button', { name: '열기' }).click()
+  await page.getByRole('button', { name: '열기', exact: true }).click()
 }
 
 const storeText = (page: Page): Promise<string> =>

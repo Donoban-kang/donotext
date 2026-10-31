@@ -1,3 +1,4 @@
+import type { ReadResult } from '../../shared/fsTypes'
 import type { DonotextApi } from '../../shared/ipc'
 import { flushAllEditors } from '../editor/sync'
 import { findLeaf } from '../layout/tree'
@@ -61,19 +62,29 @@ export function createCommands(deps: CommandDeps) {
     return a && a.tab.kind === 'doc' ? a.tab.docId : null
   }
 
-  async function openFile(): Promise<void> {
-    let results
-    try {
-      results = await api.openFileDialog()
-    } catch (e) {
-      notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
-      return
-    }
+  function showResults(results: ReadResult[]): void {
     for (const r of results) {
       const id = docs().open(r)
       lay().openDoc(id, docs().docs[id].sourceOnly ? 'source' : 'wysiwyg')
       if (r.warning === 'tooLarge') notify({ kind: 'warning', message: t('warnTooLarge') })
       if (r.warning === 'notUtf8') notify({ kind: 'warning', message: t('warnNotUtf8') })
+    }
+  }
+
+  async function openFile(): Promise<void> {
+    try {
+      showResults(await api.openFileDialog())
+    } catch (e) {
+      notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
+    }
+  }
+
+  /** Opens a file whose path is already known (e.g. clicked in the file tree). */
+  async function openPath(path: string): Promise<void> {
+    try {
+      showResults([await api.readFile(path)])
+    } catch (e) {
+      notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
     }
   }
 
@@ -121,7 +132,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>

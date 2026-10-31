@@ -17,7 +17,21 @@ export const ko = {
   warnTooLarge: '파일이 5MB를 넘어 소스 모드로만 열었습니다.',
   warnNotUtf8: 'UTF-8이 아닌 파일이라 읽기 전용으로 열었습니다. 다른 이름으로 저장하면 UTF-8로 저장됩니다.',
   openFailed: '파일을 열지 못했습니다: {reason}',
-  compareUnavailable: '비교 탭'
+  compareUnavailable: '비교 탭',
+  openFolder: '폴더 열기',
+  sidebarFiles: '파일',
+  sidebarOutline: '개요',
+  newFile: '새 파일',
+  newFolder: '새 폴더',
+  rename: '이름 바꾸기',
+  delete: '삭제',
+  showAllFiles: '모든 파일 표시',
+  noFolder: '열린 폴더가 없습니다.',
+  noHeadings: '제목이 없습니다.',
+  confirmDeleteTitle: '"{name}"을(를) 삭제할까요?',
+  confirmDeleteBody: '삭제한 항목은 휴지통으로 이동합니다.',
+  confirm: '확인',
+  fsFailed: '파일 작업에 실패했습니다: {reason}'
 } as const
 
 export type MessageKey = keyof typeof ko

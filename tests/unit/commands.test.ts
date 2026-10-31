@@ -48,6 +48,22 @@ describe('openFile', () => {
   })
 })
 
+describe('openPath', () => {
+  it('opens a file by path into the active pane', async () => {
+    const ctx = setup({ '/w/tree.md': '# t\n' })
+    await ctx.commands.openPath('/w/tree.md')
+    const a = ctx.layout.getState().getActiveTab()!
+    expect(a.tab).toMatchObject({ kind: 'doc', view: 'wysiwyg' })
+    expect(Object.values(ctx.documents.getState().docs).map((d) => d.path)).toEqual(['/w/tree.md'])
+  })
+  it('reports an error for an unreadable path without opening anything', async () => {
+    const ctx = setup()
+    await ctx.commands.openPath('/w/missing.md')
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error' }))
+    expect(Object.keys(ctx.documents.getState().docs)).toHaveLength(0)
+  })
+})
+
 describe('open warnings', () => {
   it('records the warning on the document and notifies for tooLarge and notUtf8 files', async () => {
     const ctx = setup()
