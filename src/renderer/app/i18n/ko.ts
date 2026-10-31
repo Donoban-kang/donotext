@@ -35,6 +35,7 @@ export const ko = {
   sessionFileMissing: '"{path}" 파일을 찾을 수 없어, 저장하지 않았던 내용을 새 문서로 복구했습니다. 원하는 위치에 저장하세요.',
   mergeConflict: '다른 창의 변경과 같은 줄에서 충돌해, 방금 입력한 내용을 유지했습니다.',
   imageBlocked: '[차단된 이미지]',
+  refuseLossyOverwrite: '이 파일은 UTF-8이 아니어서 읽을 수 없는 글자가 깨져 있습니다. 원본을 덮어쓰면 복구할 수 없으니 다른 이름으로 저장하세요.',
   fsFailed: '파일 작업에 실패했습니다: {reason}',
   imageNeedsSave: '이미지를 붙여넣으려면 먼저 문서를 저장하세요.',
   imageSaveFailed: '이미지를 저장하지 못했습니다: {reason}',

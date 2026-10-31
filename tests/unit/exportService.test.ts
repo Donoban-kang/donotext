@@ -73,6 +73,23 @@ describe('exportHtml', () => {
   })
 })
 
+describe('exportPdf and remote content', () => {
+  const page = (csp: string): string => `<head><meta http-equiv="Content-Security-Policy" content="${csp}"></head><img src="https://example.com/a.png">`
+  it('does not let the PDF renderer fetch remote images, keeps data URIs', async () => {
+    target = join(dir, 'remote.pdf')
+    await svc.exportPdf(page("default-src 'none'; img-src data: http: https: file:; style-src 'unsafe-inline'"), 'a', null)
+    const rendered = renderPdf.mock.calls[0][0]
+    expect(rendered).toContain("img-src data:;")
+    expect(rendered).not.toMatch(/img-src[^;"]*(https?:|file:)/)
+    expect(rendered).toContain("style-src 'unsafe-inline'")
+  })
+  it('leaves the saved HTML file\'s own policy alone', async () => {
+    const html = page("default-src 'none'; img-src data: http: https: file:")
+    await svc.exportHtml(html, 'a', null)
+    expect(await readFile(target!, 'utf8')).toBe(html)
+  })
+})
+
 describe('exportPdf', () => {
   it('renders the html to PDF bytes and writes them', async () => {
     target = join(dir, 'out.pdf')

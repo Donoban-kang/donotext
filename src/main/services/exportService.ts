@@ -16,6 +16,9 @@ function suggestedFileName(name: string, ext: string): string {
   return `${stem || 'document'}.${ext}`
 }
 
+/** The PDF window must not reach the network: images may only come from the document itself (data URIs). */
+const withoutRemoteImages = (html: string): string => html.replace(/img-src[^;"]*/i, 'img-src data:')
+
 const withExtension = (path: string, ext: string): string => (path.toLowerCase().endsWith(`.${ext}`) ? path : `${path}.${ext}`)
 
 export class ExportService {
@@ -39,7 +42,7 @@ export class ExportService {
     if (!target) return null
     const docDir = docPath ? dirname(resolve(docPath)) : null
     const standalone = await inlineLocalImages(html, docDir, (p) => this.images.read(p))
-    await this.fs.writeBinary(target, await this.deps.renderPdf(standalone))
+    await this.fs.writeBinary(target, await this.deps.renderPdf(withoutRemoteImages(standalone)))
     return target
   }
 

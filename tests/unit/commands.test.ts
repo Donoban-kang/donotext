@@ -539,3 +539,31 @@ describe('confirmQuit', () => {
     expect(ctx.confirmUnsaved).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('files that were not valid UTF-8', () => {
+  async function openLossy(ctx: ReturnType<typeof setup>): Promise<string> {
+    const base = await ctx.api.readFile('/w/a.md')
+    vi.spyOn(ctx.api, 'openFileDialog').mockResolvedValue([{ ...base, text: '\ufffd\ufffd 깨진 글', readOnly: true, warning: 'notUtf8' }])
+    await ctx.commands.openFile()
+    return Object.values(ctx.documents.getState().docs)[0].id
+  }
+  it('refuses to save the lossy text over the original file', async () => {
+    const ctx = setup()
+    await openLossy(ctx)
+    ctx.controller.queueSaveAs('/w/a.md') // the user just confirms the suggested name
+    const write = vi.spyOn(ctx.api, 'writeFile')
+    expect(await ctx.commands.saveActive()).toBe(false)
+    expect(write).not.toHaveBeenCalled()
+    expect((await ctx.api.readFile('/w/a.md')).text).toBe('# a\n')
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('UTF-8') }))
+  })
+  it('lets the user save a copy under another name, which makes the document normal again', async () => {
+    const ctx = setup()
+    const id = await openLossy(ctx)
+    ctx.controller.queueSaveAs('/w/copy.md')
+    expect(await ctx.commands.saveActive()).toBe(true)
+    expect(ctx.documents.getState().docs[id].path).toBe('/w/copy.md')
+    expect(ctx.documents.getState().docs[id].readOnly).toBe(false)
+    expect((await ctx.api.readFile('/w/a.md')).text).toBe('# a\n')
+  })
+})

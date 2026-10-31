@@ -27,6 +27,8 @@ export interface CommandDeps {
   buildExport?: (markdown: string, title: string) => string
 }
 
+const samePath = (a: string, b: string): boolean => a.replace(/\\/g, '/') === b.replace(/\\/g, '/')
+
 const reason = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export function createCommands(deps: CommandDeps) {
@@ -56,6 +58,11 @@ export function createCommands(deps: CommandDeps) {
     if (forceDialog || !d.path || d.readOnly) {
       const path = await api.saveAsDialog(d.name)
       if (!path) return false
+      // The text of a file that was not valid UTF-8 is lossy: writing it back would destroy the original.
+      if (d.warning === 'notUtf8' && d.path !== null && samePath(path, d.path)) {
+        notify({ kind: 'error', message: t('refuseLossyOverwrite') })
+        return false
+      }
       return writeDoc(docId, path)
     }
     return writeDoc(docId, d.path)

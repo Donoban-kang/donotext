@@ -15,6 +15,13 @@ describe('resolveImageSrc', () => {
   it('normalizes ".." segments', () => {
     expect(resolveImageSrc('../img/a.png', '/w/notes')).toBe(toImageUrl('/w/img/a.png'))
   })
+  it('decodes percent-encoded relative paths before encoding them once', () => {
+    expect(resolveImageSrc('assets/my%20pic.png', '/w')).toBe(toImageUrl('/w/assets/my pic.png'))
+    expect(resolveImageSrc('assets/%ED%95%9C%EA%B8%80.png', '/w')).toBe(toImageUrl('/w/assets/한글.png'))
+  })
+  it('keeps a literal percent sign that is not an escape', () => {
+    expect(resolveImageSrc('assets/100%.png', '/w')).toBe(toImageUrl('/w/assets/100%.png'))
+  })
   it('handles Windows style folders', () => {
     expect(resolveImageSrc('assets/a.png', 'C:\\Users\\me\\notes')).toBe(toImageUrl('C:/Users/me/notes/assets/a.png'))
   })

@@ -71,6 +71,15 @@ function normalizePath(p: string): string {
   return (abs ? '/' : '') + out.join('/')
 }
 
+/** Markdown writers percent-encode spaces and non-ASCII ("my%20pic.png"); a literal "%" that is not an escape stays. */
+function decodePercent(path: string): string {
+  try {
+    return decodeURI(path)
+  } catch {
+    return path
+  }
+}
+
 /**
  * Display-time URL for an image `src` found in a document. The markdown keeps the original (usually
  * relative) path; only what the editor shows is rewritten to the local-image scheme.
@@ -80,7 +89,7 @@ export function resolveImageSrc(src: string, docDir: string | null): string {
   const isAbsolute = src.startsWith('/') || /^[A-Za-z]:[\\/]/.test(src)
   if (isAbsolute) return toImageUrl(normalizePath(src.replace(/\\/g, '/')))
   if (docDir === null) return src
-  return toImageUrl(normalizePath(`${docDir.replace(/\\/g, '/')}/${src.replace(/\\/g, '/')}`))
+  return toImageUrl(normalizePath(`${docDir.replace(/\\/g, '/')}/${decodePercent(src.replace(/\\/g, '/'))}`))
 }
 
 /** Folder containing a document, or null for untitled documents. */

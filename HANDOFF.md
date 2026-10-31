@@ -30,7 +30,9 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 |---|---|
 | 단위 테스트 | `npm test` — Vitest (현재 통과 수는 최종 검증 로그 참고) |
 | E2E | `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test` — 브라우저 모드 |
-| 실제 Electron(xvfb, `--no-sandbox`) 확인 | IPC 접근 제어, 세션·백업 복구, 이미지 프로토콜, HTML/PDF 내보내기, 패키지(`release/linux-unpacked`) 실행 |
+| 실제 Electron(xvfb, `--no-sandbox`) 확인 | IPC 접근 제어, 세션 파일로 권한 확대 불가, 종료 시 저장 확인, 단일 인스턴스+파일 인자, 심볼릭 링크 저장, 세션·백업 복구, 이미지 프로토콜, HTML/PDF 내보내기, 패키지(`release/linux-unpacked`) 실행 |
+| 최종 리뷰 | 독립 리뷰어(opus, 18커밋 전체) 판정 **No** → Critical 1·Important 9(+상향 4) 수정 후 재검증. 수정 후 재리뷰는 하지 않고, 실패하던 테스트 → 통과로 확인 |
+| 테스트 수 | Vitest 456 · Playwright 100 (브라우저 모드) |
 | **미검증(로컬 확인 필요)** | Windows/macOS 설치 파일·서명·아이콘, 실제 화면 렌더링 육안 확인, 실제 한글 IME 입력(자동화는 composition 이벤트로 대체) |
 | 구현 중 내린 판단(Rulings) | 작업 로그: 저장소 외부 `.superpowers/sdd/…/progress.md`(git 제외) 내용을 최종 보고에 정리함 — 핵심은 README 「알려진 제한」과 아래 §4 |
 
@@ -96,4 +98,4 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 | 2026-10-31 | 요청 접수 → MarkText README 조사 → Electron 데스크톱 확정 → 에디터 코어 3안 비교(A 추천) → PRD v0.1, HANDOFF.md 작성 |
 | 2026-10-31 | A안 확정 → 전체 설계 제시·승인 → 파일 형식 정책 확정 → 설계 명세서 작성 |
 | 2026-10-31 | 스펙 승인 → 구현 계획서 작성(18개 태스크) |
-| 2026-10-31 | 계획서 Task 1~18 구현 완료(Native); 최종 전체 리뷰는 별도 단계 |
+| 2026-10-31 | 계획서 Task 1~18 구현 완료(Native) → 최종 전체 리뷰(판정 No) → 수정 패스(C1, I1~I9 외) 완료 |
