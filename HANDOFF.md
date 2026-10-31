@@ -21,7 +21,8 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 | PRD | `docs/PRD.md` v0.1 초안 작성 완료, **사용자 검토 대기** |
 | 설계 | **사용자 승인 완료** (2026-10-31) |
 | 명세서(spec) | `docs/superpowers/specs/2026-10-31-donotext-design.md` 작성 완료, **사용자 검토 대기** |
-| 구현 계획서(plan) | 미작성 |
+| 스펙 | **사용자 승인 완료** |
+| 구현 계획서(plan) | `docs/superpowers/plans/2026-10-31-donotext-implementation.md` 작성 완료(Task 1~18), **사용자 검토·실행 방식 선택 대기** |
 
 ## 3. 사용자 결정사항 (확정)
 
@@ -47,10 +48,10 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 1. ~~PRD 검토, 에디터 코어 A안 승인~~ (완료)
 2. ~~전체 설계 제시·승인~~ (완료)
 3. ~~설계를 스펙 문서로 저장·커밋, 자체 점검~~ (완료)
-4. **← 현재: 사용자가 스펙 파일을 검토하고 승인/수정 요청.**
-5. 승인 후에만 `superpowers:writing-plans`로 구현 계획서 작성(`docs/superpowers/plans/`) → 사용자 검토 → 실행 방식 선택.
-   - 계획 단계에서 확인할 것: TipTap 마크다운 직렬화 패키지 선택(설치 버전 확인), 컨테이너에서 Electron GUI 실행 가능 여부.
-6. 구현은 마일스톤 M1→M5 순서 (PRD §11). TDD 적용. `@codemirror/merge` API는 M4 착수 전 확인.
+4. ~~스펙 검토·승인~~ (완료)
+5. ~~구현 계획서 작성~~ (완료). **← 현재: 사용자가 계획서를 검토하고 실행 방식(subagent-driven / native)을 선택.**
+   - 계획서 안에서 구현 시 확인하도록 한 것: TipTap 마크다운 직렬화 패키지 선택(설치 버전 확인), 컨테이너에서 Electron GUI 실행 가능 여부.
+6. 승인·선택 후 계획서의 Task 1→18 순서로 구현(마일스톤 M1→M5, PRD §11). TDD 적용. 각 태스크 완료 시 이 문서의 §2를 갱신. `@codemirror/merge` API는 Task 14 Step 1에서 확인.
 
 ## 6. 알아 둘 사실
 
@@ -74,7 +75,7 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 | `docs/PRD.md` | 제품 요구사항 문서 v0.1 |
 | `HANDOFF.md` | 이 문서 |
 | `docs/superpowers/specs/2026-10-31-donotext-design.md` | 설계 명세서 (승인된 설계) |
-| `docs/superpowers/plans/` | (예정) 구현 계획서 |
+| `docs/superpowers/plans/2026-10-31-donotext-implementation.md` | 구현 계획서 (Task 1~18) |
 
 ## 9. 세션 로그
 
@@ -82,3 +83,4 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 |---|---|
 | 2026-10-31 | 요청 접수 → MarkText README 조사 → Electron 데스크톱 확정 → 에디터 코어 3안 비교(A 추천) → PRD v0.1, HANDOFF.md 작성 |
 | 2026-10-31 | A안 확정 → 전체 설계 제시·승인 → 파일 형식 정책 확정 → 설계 명세서 작성 |
+| 2026-10-31 | 스펙 승인 → 구현 계획서 작성(18개 태스크) |
