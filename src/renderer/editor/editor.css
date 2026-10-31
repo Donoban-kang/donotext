@@ -1,0 +1,13 @@
+.dn-editor-host { height: 100%; overflow: auto; }
+.dn-wysiwyg { outline: none; padding: 24px 32px; max-width: 860px; margin: 0 auto; line-height: 1.7; }
+.dn-wysiwyg h1, .dn-wysiwyg h2, .dn-wysiwyg h3 { line-height: 1.3; }
+.dn-wysiwyg pre { background: rgba(127,127,127,.12); padding: 12px 14px; border-radius: 6px; overflow: auto; }
+.dn-wysiwyg code { background: rgba(127,127,127,.15); padding: 1px 4px; border-radius: 4px; }
+.dn-wysiwyg pre code { background: none; padding: 0; }
+.dn-wysiwyg table { border-collapse: collapse; margin: 12px 0; }
+.dn-wysiwyg th, .dn-wysiwyg td { border: 1px solid rgba(127,127,127,.5); padding: 4px 10px; min-width: 60px; }
+.dn-wysiwyg blockquote { border-left: 3px solid rgba(127,127,127,.5); margin-left: 0; padding-left: 14px; }
+.dn-wysiwyg ul[data-type="taskList"] { list-style: none; padding-left: 4px; }
+.dn-wysiwyg ul[data-type="taskList"] li { display: flex; gap: 8px; }
+.dn-wysiwyg img { max-width: 100%; }
+.dn-wysiwyg pre[data-raw-html], .dn-wysiwyg code[data-raw-html] { color: inherit; opacity: .8; }
