@@ -9,7 +9,11 @@ declare global {
     __mock?: MockController
     __DONOTEXT_SEED__?: Record<string, string>
     /** Present only in browser mode; lets e2e tests inspect state. */
-    __stores?: { documents: typeof import('./store/documents').useDocuments; flushEditors: () => void }
+    __stores?: {
+      documents: typeof import('./store/documents').useDocuments
+      layout: typeof import('./store/layoutStore').useLayout
+      flushEditors: () => void
+    }
   }
 }
 

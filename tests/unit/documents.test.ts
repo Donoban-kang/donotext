@@ -133,6 +133,13 @@ describe('save and reload', () => {
     expect(d.name).toBe('한글 문서.txt')
     expect(store.getState().isDirty(id)).toBe(false)
   })
+  it('markSaved with a new path makes a read-only (non-UTF-8) document editable and clears its warning', () => {
+    const id = store.getState().open(read({ readOnly: true, warning: 'notUtf8' }))
+    expect(store.getState().docs[id].warning).toBe('notUtf8')
+    store.getState().markSaved(id, '/w/copy.md')
+    expect(store.getState().docs[id].readOnly).toBe(false)
+    expect(store.getState().docs[id].warning).toBeNull()
+  })
   it('reload replaces text, clears external state and notifies with origin "reload"', () => {
     const id = store.getState().open(read())
     const cb = vi.fn()

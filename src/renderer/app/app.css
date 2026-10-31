@@ -1,0 +1,32 @@
+html, body, #root { height: 100%; margin: 0; }
+body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; color: CanvasText; background: Canvas; }
+.dn-app { display: flex; flex-direction: column; height: 100%; }
+.dn-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid rgba(127,127,127,.35); }
+.dn-toolbar h1 { font-size: 15px; margin: 0 8px 0 0; }
+.dn-main { flex: 1; min-height: 0; display: flex; }
+.dn-main > * { flex: 1; min-width: 0; }
+.dn-split { display: flex; min-width: 0; min-height: 0; height: 100%; width: 100%; }
+.dn-split-row { flex-direction: row; }
+.dn-split-col { flex-direction: column; }
+.dn-split-child { min-width: 0; min-height: 0; display: flex; }
+.dn-split-child > * { flex: 1; min-width: 0; min-height: 0; }
+.dn-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid transparent; }
+.dn-pane.active { border-color: rgba(60,120,240,.55); }
+.dn-pane-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dn-editor-area { flex: 1; min-height: 0; }
+.dn-tabbar { display: flex; overflow-x: auto; border-bottom: 1px solid rgba(127,127,127,.35); background: rgba(127,127,127,.08); }
+.dn-tab { display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer; border-right: 1px solid rgba(127,127,127,.25); white-space: nowrap; user-select: none; }
+.dn-tab.active { background: Canvas; font-weight: 600; }
+.dn-tab-dirty { color: #e07a00; font-size: 11px; }
+.dn-tab-close { border: 0; background: transparent; cursor: pointer; color: inherit; opacity: .6; }
+.dn-tab-close:hover { opacity: 1; }
+.dn-empty { margin: auto; opacity: .6; }
+.dn-banner { padding: 6px 12px; background: rgba(255,200,0,.2); border-bottom: 1px solid rgba(255,200,0,.5); font-size: 13px; }
+.dn-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.dn-modal { background: Canvas; color: CanvasText; padding: 18px 22px; border-radius: 8px; max-width: 420px; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+.dn-modal h2 { font-size: 16px; margin: 0 0 8px; }
+.dn-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.dn-toasts { position: fixed; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
+.dn-toast { padding: 8px 12px; border-radius: 6px; background: #333; color: #fff; max-width: 380px; font-size: 13px; cursor: pointer; }
+.dn-toast-error { background: #a32; }
+.dn-toast-warning { background: #8a6d00; }

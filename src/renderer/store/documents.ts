@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ReadResult } from '../../shared/fsTypes'
+import type { ReadResult, Warning } from '../../shared/fsTypes'
 import type { Eol } from '../../shared/textFormat'
 
 export interface Doc {
@@ -13,6 +13,7 @@ export interface Doc {
   bom: boolean
   readOnly: boolean
   sourceOnly: boolean
+  warning: Warning | null
   version: number
   external: 'none' | 'changed' | 'deleted'
 }
@@ -75,6 +76,7 @@ export function createDocumentsStore() {
         bom: r.bom,
         readOnly: r.readOnly,
         sourceOnly,
+        warning: r.warning ?? null,
         version: 0,
         external: 'none'
       }
@@ -95,6 +97,7 @@ export function createDocumentsStore() {
         bom: false,
         readOnly: false,
         sourceOnly: false,
+        warning: null,
         version: 0,
         external: 'none'
       }
@@ -116,6 +119,9 @@ export function createDocumentsStore() {
       if (path) {
         next.path = path
         next.name = baseName(path)
+        // Saving under a new path writes valid UTF-8, so a read-only/lossy document becomes editable.
+        next.readOnly = false
+        next.warning = null
       }
       set((s) => ({ docs: { ...s.docs, [id]: next } }))
     },
@@ -133,6 +139,7 @@ export function createDocumentsStore() {
         bom: r.bom,
         readOnly: r.readOnly,
         sourceOnly,
+        warning: r.warning ?? null,
         version: doc.version + 1,
         external: 'none'
       }

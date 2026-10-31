@@ -14,13 +14,13 @@ const editor = (page: import('@playwright/test').Page) => page.locator('.ProseMi
 
 test('renders the opened markdown as formatted content and is not dirty', async ({ page }) => {
   await expect(editor(page).locator('h1')).toHaveText('제목')
-  await expect(page.getByTestId('dirty')).toHaveText('')
+  await expect(page.getByTestId('tab-dirty')).toHaveCount(0)
 })
 
 test('typing marks the document modified and updates the store text', async ({ page }) => {
   await focusEditorAtEnd(page)
   await page.keyboard.type(' 추가')
-  await expect(page.getByTestId('dirty')).toHaveText('수정됨')
+  await expect(page.getByTestId('tab-dirty')).toBeVisible()
   const text = await page.evaluate(() => Object.values(window.__stores!.documents.getState().docs)[0].text)
   expect(text).toContain('본문 추가')
 })

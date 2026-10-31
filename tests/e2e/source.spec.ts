@@ -24,7 +24,7 @@ test.describe('source mode', () => {
     await page.locator('.cm-content').click()
     await page.keyboard.press('ControlOrMeta+End')
     await page.keyboard.type('추가 줄')
-    await expect(page.getByTestId('dirty')).toHaveText('수정됨')
+    await expect(page.getByTestId('tab-dirty')).toBeVisible()
     await page.getByRole('button', { name: 'WYSIWYG 모드' }).click()
     await expect(page.locator('.ProseMirror')).toContainText('추가 줄')
   })
