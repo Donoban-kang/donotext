@@ -58,6 +58,7 @@ MarkText(오픈소스 마크다운 에디터)를 분석해 재현한 **Electron 
 - MarkText README에서 확인한 기능: WYSIWYG, CommonMark/GFM/일부 Pandoc, KaTeX, front matter, 이모지, HTML/PDF 내보내기, 다중 테마, 소스/타자기/집중 모드, 클립보드 이미지 붙여넣기.
 - **[확인 필요]** MarkText 내부 구조(Muya 엔진, Vue)와 MIT 라이선스는 사전 지식이며 이번 세션에서 검증하지 못함. 코드를 재사용하려면 먼저 LICENSE 파일을 확인할 것.
 - 개발 환경은 클라우드 컨테이너. Chromium+Playwright가 설치되어 있어 렌더러는 브라우저 모드로 검증 가능하나, Electron GUI 직접 실행 검증은 제한적일 수 있음.
+- **Electron GUI 확인(Task 1):** 컨테이너(root)에서 `xvfb-run -a npx electron --no-sandbox --disable-gpu .`로 실행됨(Electron 45.2.1). root라 `--no-sandbox`가 필요하며 앱 코드의 `sandbox: true`는 그대로 유지. E2E는 우선 브라우저 모드(`npm run dev:web`)로 진행.
 - 컨테이너는 일시적이므로 **작업물은 반드시 커밋·푸시**해야 보존됨.
 
 ## 7. 사용자 선호 (응답 방식)
