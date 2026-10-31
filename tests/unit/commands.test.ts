@@ -17,8 +17,9 @@ function setup(seed: Record<string, string> = { '/w/a.md': '# a\n' }, choice: Ch
   const flush = vi.fn()
   const wrapped: DonotextApi = { ...api }
   const onFileOpened = vi.fn()
-  const commands = createCommands({ api: wrapped, documents, layout, confirmUnsaved, notify, flush, onFileOpened })
-  return { api: wrapped, controller, documents, layout, confirmUnsaved, notify, flush, commands, onFileOpened }
+  const buildExport = vi.fn((md: string, title: string) => `<html><title>${title}</title>${md}</html>`)
+  const commands = createCommands({ api: wrapped, documents, layout, confirmUnsaved, notify, flush, onFileOpened, buildExport })
+  return { api: wrapped, controller, documents, layout, confirmUnsaved, notify, flush, commands, onFileOpened, buildExport }
 }
 
 async function openA(ctx: ReturnType<typeof setup>, path = '/w/a.md'): Promise<string> {
@@ -397,5 +398,57 @@ describe('compareDocs', () => {
     expect(ctx.confirmUnsaved).not.toHaveBeenCalled()
     expect(ctx.documents.getState().docs[a]).toBeDefined()
     expect(ctx.documents.getState().docs[b]).toBeDefined()
+  })
+})
+
+describe('exportActive', () => {
+  it('builds the html from the flushed text and sends it with the file name and path', async () => {
+    const ctx = setup({ '/w/메모.md': '# t\n' })
+    const id = await openA(ctx, '/w/메모.md')
+    const spy = vi.spyOn(ctx.api, 'exportHtml').mockResolvedValue('/out/메모.html')
+    ctx.flush.mockImplementation(() => ctx.documents.getState().setText(id, 'flushed', 'p'))
+    expect(await ctx.commands.exportActive('html')).toBe('/out/메모.html')
+    expect(ctx.buildExport).toHaveBeenCalledWith('flushed', '메모')
+    expect(spy).toHaveBeenCalledWith('<html><title>메모</title>flushed</html>', '메모.md', '/w/메모.md')
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'info', message: expect.stringContaining('/out/메모.html') }))
+  })
+  it('uses the PDF channel for pdf', async () => {
+    const ctx = setup()
+    await openA(ctx)
+    const html = vi.spyOn(ctx.api, 'exportHtml')
+    const pdf = vi.spyOn(ctx.api, 'exportPdf').mockResolvedValue('/out/a.pdf')
+    expect(await ctx.commands.exportActive('pdf')).toBe('/out/a.pdf')
+    expect(pdf).toHaveBeenCalledTimes(1)
+    expect(html).not.toHaveBeenCalled()
+  })
+  it('stays quiet when the save dialog is cancelled', async () => {
+    const ctx = setup()
+    await openA(ctx)
+    vi.spyOn(ctx.api, 'exportHtml').mockResolvedValue(null)
+    expect(await ctx.commands.exportActive('html')).toBeNull()
+    expect(ctx.notify).not.toHaveBeenCalled()
+  })
+  it('passes no path for an untitled document', async () => {
+    const ctx = setup()
+    ctx.commands.newUntitled()
+    const spy = vi.spyOn(ctx.api, 'exportHtml').mockResolvedValue('/out/x.html')
+    await ctx.commands.exportActive('html')
+    expect(spy.mock.calls[0][2]).toBeNull()
+  })
+  it('refuses non-markdown documents and an empty workspace', async () => {
+    const ctx = setup({ '/w/data.json': '{}' })
+    const spy = vi.spyOn(ctx.api, 'exportHtml')
+    expect(await ctx.commands.exportActive('html')).toBeNull()
+    await openA(ctx, '/w/data.json')
+    expect(await ctx.commands.exportActive('html')).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning' }))
+  })
+  it('reports a failing export as an error', async () => {
+    const ctx = setup()
+    await openA(ctx)
+    vi.spyOn(ctx.api, 'exportPdf').mockRejectedValue(new Error('disk full'))
+    expect(await ctx.commands.exportActive('pdf')).toBeNull()
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('disk full') }))
   })
 })

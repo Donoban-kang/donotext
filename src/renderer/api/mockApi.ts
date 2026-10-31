@@ -142,12 +142,12 @@ export function createMockApi(
       return Object.fromEntries(backups)
     },
     async exportHtml(html, suggestedName) {
-      const p = `/exports/${suggestedName}`
+      const p = `/exports/${suggestedName.replace(/\.[^.]*$/, '')}.html`
       files.set(p, { text: html, eol: 'lf', bom: false })
       return p
     },
     async exportPdf(_html, suggestedName) {
-      return `/exports/${suggestedName}`
+      return `/exports/${suggestedName.replace(/\.[^.]*$/, '')}.pdf`
     },
     async saveImage(_docPath, _bytes, ext) {
       if (!(IMAGE_EXTENSIONS as readonly string[]).includes(ext.toLowerCase())) throw new Error('Unsupported image type')

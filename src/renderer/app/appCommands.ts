@@ -1,3 +1,4 @@
+import { buildExportHtml } from '../editor/exportHtml'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import { useWorkspace } from '../store/workspace'
@@ -14,7 +15,8 @@ export function getCommands(): Commands {
     layout: useLayout,
     confirmUnsaved: (name) => useDialogs.getState().ask(name),
     notify: (toast) => useToasts.getState().push(toast),
-    onFileOpened: (path) => useWorkspace.getState().addRecent(path)
+    onFileOpened: (path) => useWorkspace.getState().addRecent(path),
+    buildExport: buildExportHtml
   })
   return instance
 }

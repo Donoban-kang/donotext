@@ -78,6 +78,19 @@ export class FsService {
     }
   }
 
+  /** Writes raw bytes (e.g. a PDF) to an allowed path, replacing the file atomically. */
+  async writeBinary(path: string, bytes: Uint8Array): Promise<void> {
+    const p = this.assertAllowed(path)
+    const tmp = join(dirname(p), `.${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}.tmp`)
+    await writeFile(tmp, bytes)
+    try {
+      await rename(tmp, p)
+    } catch (e) {
+      await rm(tmp, { force: true })
+      throw e
+    }
+  }
+
   async readDir(path: string): Promise<DirEntry[]> {
     const p = this.assertAllowed(path)
     const entries = await readdir(p, { withFileTypes: true })

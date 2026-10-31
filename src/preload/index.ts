@@ -24,8 +24,8 @@ const api: DonotextApi = {
   writeBackup: (docId, text) => ipcRenderer.invoke(IPC.writeBackup, docId, text),
   clearBackup: (docId) => ipcRenderer.invoke(IPC.clearBackup, docId),
   loadBackups: () => ipcRenderer.invoke(IPC.loadBackups),
-  exportHtml: (html, name) => ipcRenderer.invoke(IPC.exportHtml, html, name),
-  exportPdf: (html, name) => ipcRenderer.invoke(IPC.exportPdf, html, name),
+  exportHtml: (html, name, docPath) => ipcRenderer.invoke(IPC.exportHtml, html, name, docPath),
+  exportPdf: (html, name, docPath) => ipcRenderer.invoke(IPC.exportPdf, html, name, docPath),
   saveImage: (docPath, bytes, ext) => ipcRenderer.invoke(IPC.saveImage, docPath, bytes, ext),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url)
 }

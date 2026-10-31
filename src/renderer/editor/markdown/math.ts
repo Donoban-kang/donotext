@@ -25,9 +25,9 @@ interface MathToken {
 }
 
 /** Renders a formula safely: invalid TeX is shown as source, never thrown and never trusted. */
-export function renderLatex(latex: string, displayMode: boolean): string {
+export function renderLatex(latex: string, displayMode: boolean, output: 'htmlAndMathml' | 'mathml' = 'htmlAndMathml'): string {
   try {
-    return katex.renderToString(latex, { throwOnError: false, displayMode, trust: false, strict: 'ignore' })
+    return katex.renderToString(latex, { throwOnError: false, displayMode, trust: false, strict: 'ignore', output })
   } catch {
     return ''
   }

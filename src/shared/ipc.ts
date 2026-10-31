@@ -49,8 +49,9 @@ export interface DonotextApi {
   writeBackup(docId: string, text: string): Promise<void>
   clearBackup(docId: string): Promise<void>
   loadBackups(): Promise<Record<string, string>>
-  exportHtml(html: string, suggestedName: string): Promise<string | null>
-  exportPdf(html: string, suggestedName: string): Promise<string | null>
+  /** Both resolve to the chosen file path, or null when the user cancels the save dialog. */
+  exportHtml(html: string, suggestedName: string, docPath: string | null): Promise<string | null>
+  exportPdf(html: string, suggestedName: string, docPath: string | null): Promise<string | null>
   saveImage(docPath: string | null, bytes: Uint8Array, ext: string): Promise<string>
   openExternal(url: string): Promise<void>
 }

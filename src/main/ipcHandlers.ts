@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { MARKDOWN_EXTENSIONS } from '../shared/fileKind'
 import { IPC } from '../shared/ipc'
+import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
 import type { ImageService } from './services/imageService'
 import type { SessionStore } from './services/sessionStore'
@@ -18,21 +19,16 @@ function bool(v: unknown, name: string): boolean {
   return v
 }
 
-function notImplemented(task: number): () => never {
-  return () => {
-    throw new Error(`Not implemented yet (plan Task ${task})`)
-  }
-}
-
 export interface IpcDeps {
   fs: FsService
   sessions: SessionStore
   watcher: WatchService
   images: ImageService
+  exports: ExportService
   getWindow: () => BrowserWindow | null
 }
 
-export function registerIpc({ fs, sessions, watcher, images, getWindow }: IpcDeps): void {
+export function registerIpc({ fs, sessions, watcher, images, exports, getWindow }: IpcDeps): void {
   const markdownFilter = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS.map((e) => e.slice(1)) }
   const allFilter = { name: 'All Files', extensions: ['*'] }
 
@@ -110,7 +106,12 @@ export function registerIpc({ fs, sessions, watcher, images, getWindow }: IpcDep
     return images.save(docPath as string | null, bytes, str(ext, 'ext', 16))
   })
 
-  // Replaced by a later task (export: Task 17).
-  ipcMain.handle(IPC.exportHtml, notImplemented(17))
-  ipcMain.handle(IPC.exportPdf, notImplemented(17))
+  const MAX_EXPORT_HTML = 64 * 1024 * 1024
+  const optionalPath = (v: unknown): string | null => (v === null || v === undefined ? null : str(v, 'docPath'))
+  ipcMain.handle(IPC.exportHtml, (_e, html, name, docPath) =>
+    exports.exportHtml(str(html, 'html', MAX_EXPORT_HTML), str(name, 'name', 255), optionalPath(docPath))
+  )
+  ipcMain.handle(IPC.exportPdf, (_e, html, name, docPath) =>
+    exports.exportPdf(str(html, 'html', MAX_EXPORT_HTML), str(name, 'name', 255), optionalPath(docPath))
+  )
 }

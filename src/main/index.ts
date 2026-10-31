@@ -1,4 +1,6 @@
-import { app, BrowserWindow, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, protocol, session, shell } from 'electron'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
@@ -6,6 +8,7 @@ import { registerIpc } from './ipcHandlers'
 import { IPC } from '../shared/ipc'
 import { IMAGE_SCHEME } from '../shared/images'
 import { FsService } from './services/fsService'
+import { ExportService } from './services/exportService'
 import { handleImageRequest } from './services/imageProtocol'
 import { ImageService } from './services/imageService'
 import { SessionStore } from './services/sessionStore'
@@ -17,6 +20,25 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let mainWindow: BrowserWindow | null = null
+
+/** Renders a complete HTML document to PDF in a hidden window that cannot run scripts. */
+async function renderPdf(html: string): Promise<Uint8Array> {
+  const dir = await mkdtemp(join(tmpdir(), 'donotext-pdf-'))
+  const file = join(dir, 'document.html')
+  await writeFile(file, html, 'utf8')
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: false }
+  })
+  try {
+    await win.loadFile(file)
+    const pdf = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4' })
+    return new Uint8Array(pdf)
+  } finally {
+    win.destroy()
+    await rm(dir, { recursive: true, force: true })
+  }
+}
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -49,10 +71,19 @@ void app.whenReady().then(() => {
   const watcher = new WatchService((e) => mainWindow?.webContents.send(IPC.fileChanged, e))
   app.on('before-quit', () => void watcher.close())
   const fsService = new FsService({ trash: (p) => shell.trashItem(p) })
+  const imageService = new ImageService(fsService)
   protocol.handle(IMAGE_SCHEME, (request) => handleImageRequest(request, fsService))
   registerIpc({
     fs: fsService,
-    images: new ImageService(fsService),
+    images: imageService,
+    exports: new ExportService(fsService, imageService, {
+      showSaveDialog: async ({ defaultName, ext }) => {
+        const opts = { defaultPath: defaultName, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] }
+        const res = mainWindow ? await dialog.showSaveDialog(mainWindow, opts) : await dialog.showSaveDialog(opts)
+        return res.canceled || !res.filePath ? null : res.filePath
+      },
+      renderPdf
+    }),
     sessions: new SessionStore(app.getPath('userData')),
     watcher,
     getWindow: () => mainWindow

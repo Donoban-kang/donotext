@@ -83,6 +83,12 @@ export function App(): React.ReactElement {
         <button disabled={leafCount < 2} aria-pressed={linked} onClick={() => c.toggleScrollLink()}>
           {t('scrollLinkOn')}
         </button>
+        <button disabled={!canToggle} onClick={() => void c.exportActive('html')}>
+          {t('exportHtml')}
+        </button>
+        <button disabled={!canToggle} onClick={() => void c.exportActive('pdf')}>
+          {t('exportPdf')}
+        </button>
         <button disabled={docCount < 2} onClick={() => setCompareOpen(true)}>
           {t('compare')}
         </button>

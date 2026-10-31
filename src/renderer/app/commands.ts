@@ -23,6 +23,8 @@ export interface CommandDeps {
   flush?: () => void
   /** Called with the path of every file that was opened (recent-files list). */
   onFileOpened?: (path: string) => void
+  /** Builds the sanitized HTML document for an export (needs a DOM, so it is injected). */
+  buildExport?: (markdown: string, title: string) => string
 }
 
 const reason = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -143,6 +145,28 @@ export function createCommands(deps: CommandDeps) {
     return a ? closeTab(a.leafId, a.index) : false
   }
 
+  /** Exports the active document as a standalone HTML file or a PDF. Resolves to the file path, or null. */
+  async function exportActive(kind: 'html' | 'pdf'): Promise<string | null> {
+    const id = activeDocId()
+    const first = id ? docs().docs[id] : undefined
+    if (!id || !first || first.sourceOnly || !deps.buildExport) {
+      notify({ kind: 'warning', message: t('exportNeedsMarkdown') })
+      return null
+    }
+    flush()
+    const doc = docs().docs[id]
+    const title = doc.name.replace(/\.[^.]*$/, '')
+    try {
+      const html = deps.buildExport(doc.text, title)
+      const out = kind === 'html' ? await api.exportHtml(html, doc.name, doc.path) : await api.exportPdf(html, doc.name, doc.path)
+      if (out) notify({ kind: 'info', message: t('exported', { path: out }) })
+      return out
+    } catch (e) {
+      notify({ kind: 'error', message: t('exportFailed', { reason: reason(e) }) })
+      return null
+    }
+  }
+
   /** Splits the active pane; the new pane shows the same tab so one file can be viewed twice. */
   function splitActive(dir: 'row' | 'col'): boolean {
     const active = lay().getActiveTab()
@@ -201,7 +225,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, exportActive, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>
