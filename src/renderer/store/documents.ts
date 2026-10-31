@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ReadResult, Warning } from '../../shared/fsTypes'
 import type { Eol } from '../../shared/textFormat'
+import { t } from '../app/i18n'
 
 export interface Doc {
   id: string
@@ -93,7 +94,7 @@ export function createDocumentsStore() {
       const doc: Doc = {
         id,
         path: null,
-        name: `제목 없음 ${++untitledCounter}`,
+        name: t('untitledName', { n: String(++untitledCounter) }),
         text: '',
         baseline: '',
         baselineNormalized: '',

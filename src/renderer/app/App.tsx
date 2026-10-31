@@ -12,7 +12,9 @@ import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
 import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
+import { ThemeController } from './ThemeController'
 import './app.css'
+import './theme.css'
 
 export function App(): React.ReactElement {
   const root = useLayout((s) => s.root)
@@ -55,6 +57,8 @@ export function App(): React.ReactElement {
   const linked = useLayout((s) => s.scrollLink !== null)
   const docCount = useDocuments((s) => Object.keys(s.docs).length)
   const setCompareOpen = useDialogs((s) => s.setCompareOpen)
+  const theme = useSettings((s) => s.theme)
+  const setTheme = useSettings((s) => s.setTheme)
   const autoSave = useSettings((s) => s.autoSave)
   const setAutoSave = useSettings((s) => s.setAutoSave)
   const focusMode = useSettings((s) => s.focusMode)
@@ -107,6 +111,14 @@ export function App(): React.ReactElement {
           ))}
         </select>
         <label className="dn-toolbar-check">
+          {t('theme')}{' '}
+          <select value={theme} onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')} aria-label={t('theme')}>
+            <option value="system">{t('themeSystem')}</option>
+            <option value="light">{t('themeLight')}</option>
+            <option value="dark">{t('themeDark')}</option>
+          </select>
+        </label>
+        <label className="dn-toolbar-check">
           <input type="checkbox" checked={focusMode} onChange={(e) => setFocusMode(e.target.checked)} /> {t('focusMode')}
         </label>
         <label className="dn-toolbar-check">
@@ -122,6 +134,7 @@ export function App(): React.ReactElement {
           <SplitView node={root} />
         </main>
       </div>
+      <ThemeController />
       <ScrollLinkController />
       <ConfirmUnsavedDialog />
       <ConfirmDialog />

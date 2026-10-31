@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, protocol, session, shell } from 'electron'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
+import { buildMenuTemplate } from './menu'
 import { registerIpc } from './ipcHandlers'
 import { IPC } from '../shared/ipc'
 import { IMAGE_SCHEME } from '../shared/images'
@@ -88,6 +89,8 @@ void app.whenReady().then(() => {
     watcher,
     getWindow: () => mainWindow
   })
+  const template = buildMenuTemplate({ isMac: process.platform === 'darwin', isDev: !app.isPackaged, appName: app.name })
+  Menu.setApplicationMenu(template ? Menu.buildFromTemplate(template) : null)
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -6,6 +6,7 @@ import { normalizeMarkdown } from './editor/markdown/codec'
 import { flushAllEditors } from './editor/sync'
 import { useDocuments } from './store/documents'
 import { useLayout } from './store/layoutStore'
+import { applyTheme } from './app/theme'
 import { useSettings } from './store/settings'
 import { useWorkspace } from './store/workspace'
 
@@ -26,6 +27,7 @@ async function boot(): Promise<void> {
     }
   }
   useDocuments.getState().setNormalizer(normalizeMarkdown)
+  applyTheme(useSettings.getState().theme) // before the first paint, so there is no light flash in dark mode
   await startAppServices()
   createRoot(document.getElementById('root') as HTMLElement).render(<App />)
 }

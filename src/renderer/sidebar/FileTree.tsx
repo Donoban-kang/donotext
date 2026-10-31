@@ -120,7 +120,7 @@ export function FileTree(): React.ReactElement {
     if (!editing) return
     const problem = validateEntryName(value)
     if (problem) {
-      setNameError(problem)
+      setNameError(t(problem))
       return
     }
     const name = value.trim()

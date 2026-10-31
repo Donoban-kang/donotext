@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
+import { t } from '../app/i18n'
 import { getSearchState } from './findReplace'
 
 export interface FindPanelProps {
@@ -52,7 +53,7 @@ export function FindPanel({ editor, mode, onClose }: FindPanelProps): React.Reac
     >
       <input
         ref={input}
-        aria-label="찾기"
+        aria-label={t('find')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
@@ -60,19 +61,19 @@ export function FindPanel({ editor, mode, onClose }: FindPanelProps): React.Reac
         }}
       />
       <span data-testid="find-count">{count === 0 ? '0/0' : `${(s?.current ?? 0) + 1}/${count}`}</span>
-      <button onClick={() => editor.commands.findPrevious()}>이전</button>
-      <button onClick={() => editor.commands.findNext()}>다음</button>
+      <button onClick={() => editor.commands.findPrevious()}>{t('findPrevious')}</button>
+      <button onClick={() => editor.commands.findNext()}>{t('findNext')}</button>
       <label>
-        <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} /> 대소문자 구분
+        <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} /> {t('matchCase')}
       </label>
       {mode === 'replace' && (
         <>
-          <input aria-label="바꿀 내용" value={replacement} onChange={(e) => setReplacement(e.target.value)} />
-          <button onClick={() => editor.commands.replaceCurrent(replacement)}>바꾸기</button>
-          <button onClick={() => editor.commands.replaceAll(replacement)}>모두 바꾸기</button>
+          <input aria-label={t('replaceWith')} value={replacement} onChange={(e) => setReplacement(e.target.value)} />
+          <button onClick={() => editor.commands.replaceCurrent(replacement)}>{t('replaceOne')}</button>
+          <button onClick={() => editor.commands.replaceAll(replacement)}>{t('replaceAllMatches')}</button>
         </>
       )}
-      <button aria-label="닫기" onClick={close}>
+      <button aria-label={t('close')} onClick={close}>
         ✕
       </button>
     </div>

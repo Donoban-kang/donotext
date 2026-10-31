@@ -1,6 +1,7 @@
 import { InputRule, mergeAttributes, Node } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import katex from 'katex'
+import { t } from '../../app/i18n'
 
 // Pandoc-style: the opening $ is followed by a non-space, the closing $ follows a non-space
 // and is not followed by a digit, so "$5 and $10" stays plain text.
@@ -44,7 +45,7 @@ function mathNodeView(displayMode: boolean) {
       editing = false
       const latex = String(current.attrs.latex ?? '')
       dom.innerHTML = latex.trim() ? renderLatex(latex, displayMode) : ''
-      if (!latex.trim()) dom.textContent = '수식을 입력하세요 (더블클릭)'
+      if (!latex.trim()) dom.textContent = t('mathPlaceholder')
       dom.title = latex
     }
 
@@ -54,7 +55,7 @@ function mathNodeView(displayMode: boolean) {
       const field = document.createElement(displayMode ? 'textarea' : 'input') as HTMLInputElement | HTMLTextAreaElement
       field.className = 'dn-math-input'
       field.value = String(current.attrs.latex ?? '')
-      field.setAttribute('aria-label', '수식 입력')
+      field.setAttribute('aria-label', t('mathInputLabel'))
       dom.replaceChildren(field)
       field.focus()
       let done = false
