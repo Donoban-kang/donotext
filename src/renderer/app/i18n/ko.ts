@@ -31,7 +31,14 @@ export const ko = {
   confirmDeleteTitle: '"{name}"을(를) 삭제할까요?',
   confirmDeleteBody: '삭제한 항목은 휴지통으로 이동합니다.',
   confirm: '확인',
-  fsFailed: '파일 작업에 실패했습니다: {reason}'
+  sessionRecovered: '저장하지 않았던 변경 내용 {count}건을 복구했습니다.',
+  fsFailed: '파일 작업에 실패했습니다: {reason}',
+  autoSave: '자동 저장',
+  recentFiles: '최근 파일',
+  externalChanged: '디스크에서 파일이 변경되었습니다.',
+  externalDeleted: '파일이 삭제되었거나 이동되었습니다. 저장하면 같은 경로에 다시 만듭니다.',
+  reload: '다시 불러오기',
+  keepMine: '내 내용 유지'
 } as const
 
 export type MessageKey = keyof typeof ko

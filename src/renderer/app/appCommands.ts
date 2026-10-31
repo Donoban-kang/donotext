@@ -1,5 +1,6 @@
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
+import { useWorkspace } from '../store/workspace'
 import { useDialogs, useToasts } from '../store/ui'
 import { createCommands, type Commands } from './commands'
 
@@ -12,7 +13,8 @@ export function getCommands(): Commands {
     documents: useDocuments,
     layout: useLayout,
     confirmUnsaved: (name) => useDialogs.getState().ask(name),
-    notify: (toast) => useToasts.getState().push(toast)
+    notify: (toast) => useToasts.getState().push(toast),
+    onFileOpened: (path) => useWorkspace.getState().addRecent(path)
   })
   return instance
 }

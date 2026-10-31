@@ -16,8 +16,9 @@ function setup(seed: Record<string, string> = { '/w/a.md': '# a\n' }, choice: Ch
   const notify = vi.fn()
   const flush = vi.fn()
   const wrapped: DonotextApi = { ...api }
-  const commands = createCommands({ api: wrapped, documents, layout, confirmUnsaved, notify, flush })
-  return { api: wrapped, controller, documents, layout, confirmUnsaved, notify, flush, commands }
+  const onFileOpened = vi.fn()
+  const commands = createCommands({ api: wrapped, documents, layout, confirmUnsaved, notify, flush, onFileOpened })
+  return { api: wrapped, controller, documents, layout, confirmUnsaved, notify, flush, commands, onFileOpened }
 }
 
 async function openA(ctx: ReturnType<typeof setup>, path = '/w/a.md'): Promise<string> {
@@ -61,6 +62,44 @@ describe('openPath', () => {
     await ctx.commands.openPath('/w/missing.md')
     expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error' }))
     expect(Object.keys(ctx.documents.getState().docs)).toHaveLength(0)
+  })
+})
+
+describe('recent files and external changes', () => {
+  it('reports every opened file path to onFileOpened', async () => {
+    const ctx = setup({ '/w/a.md': '1', '/w/b.md': '2' })
+    await openA(ctx, '/w/a.md')
+    await ctx.commands.openPath('/w/b.md')
+    expect(ctx.onFileOpened.mock.calls.map((c) => c[0])).toEqual(['/w/a.md', '/w/b.md'])
+  })
+  it('reloadFromDisk replaces the text with the disk content and clears the flag', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    ctx.documents.getState().setText(id, 'mine', 'p')
+    ctx.documents.getState().setExternal(id, 'changed')
+    await ctx.api.writeFile('/w/a.md', 'disk\n', 'lf', false)
+    await ctx.commands.reloadFromDisk(id)
+    expect(ctx.documents.getState().docs[id].text).toBe('disk\n')
+    expect(ctx.documents.getState().docs[id].external).toBe('none')
+  })
+  it('reloadFromDisk keeps the document and reports an error when the file is gone', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    await ctx.api.deleteEntry('/w/a.md')
+    await ctx.commands.reloadFromDisk(id)
+    expect(ctx.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error' }))
+    expect(ctx.documents.getState().docs[id]).toBeDefined()
+  })
+  it('keepLocal clears the flag without touching the text; saving then overwrites the disk', async () => {
+    const ctx = setup()
+    const id = await openA(ctx)
+    ctx.documents.getState().setText(id, 'mine\n', 'p')
+    ctx.documents.getState().setExternal(id, 'changed')
+    ctx.commands.keepLocal(id)
+    expect(ctx.documents.getState().docs[id].external).toBe('none')
+    expect(ctx.documents.getState().docs[id].text).toBe('mine\n')
+    await ctx.commands.saveActive()
+    expect((await ctx.api.readFile('/w/a.md')).text).toBe('mine\n')
   })
 })
 

@@ -21,6 +21,8 @@ export interface CommandDeps {
   notify(toast: Toast): void
   /** Pushes pending editor edits into the document store; defaults to the editor registry. */
   flush?: () => void
+  /** Called with the path of every file that was opened (recent-files list). */
+  onFileOpened?: (path: string) => void
 }
 
 const reason = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -66,6 +68,7 @@ export function createCommands(deps: CommandDeps) {
     for (const r of results) {
       const id = docs().open(r)
       lay().openDoc(id, docs().docs[id].sourceOnly ? 'source' : 'wysiwyg')
+      deps.onFileOpened?.(r.path)
       if (r.warning === 'tooLarge') notify({ kind: 'warning', message: t('warnTooLarge') })
       if (r.warning === 'notUtf8') notify({ kind: 'warning', message: t('warnNotUtf8') })
     }
@@ -86,6 +89,22 @@ export function createCommands(deps: CommandDeps) {
     } catch (e) {
       notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
     }
+  }
+
+  /** Replaces a document's text with the file's current content, discarding local edits. */
+  async function reloadFromDisk(docId: string): Promise<void> {
+    const d = docs().docs[docId]
+    if (!d?.path) return
+    try {
+      docs().reload(docId, await api.readFile(d.path))
+    } catch (e) {
+      notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
+    }
+  }
+
+  /** Dismisses the "changed on disk" notice and keeps the in-editor text. */
+  function keepLocal(docId: string): void {
+    docs().setExternal(docId, 'none')
   }
 
   function newUntitled(): void {
@@ -132,7 +151,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, reloadFromDisk, keepLocal, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
 }
 
 export type Commands = ReturnType<typeof createCommands>

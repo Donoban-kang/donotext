@@ -1,5 +1,15 @@
-// Placeholder shape; Task 12 narrows this to the full session model.
+import type { LayoutNode } from './layoutTypes'
+
+export interface SessionDoc {
+  id: string
+  path: string | null
+}
+
 export interface SessionData {
   version: 1
-  [key: string]: unknown
+  layout: LayoutNode
+  docs: SessionDoc[]
+  folder: string | null
+  activeLeafId: string
+  recent: string[]
 }

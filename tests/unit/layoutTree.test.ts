@@ -13,6 +13,7 @@ import {
   newLeaf,
   openTab,
   parseLayout,
+  remapDocIds,
   resize,
   setActiveTab,
   splitLeaf
@@ -225,5 +226,38 @@ describe('parseLayout', () => {
   it('rejects tabs of unknown shape', () => {
     const bad = { type: 'leaf', id: 'l1', tabs: [{ kind: 'weird' }], active: 0 }
     expect(parseLayout(bad)).not.toMatchObject({ id: 'l1' })
+  })
+})
+
+describe('remapDocIds', () => {
+  it('renames document ids and drops tabs whose document is gone', () => {
+    let root: LayoutNode = newLeaf()
+    const id = (root as ReturnType<typeof newLeaf>).id
+    for (const d of ['old1', 'old2', 'old3']) root = openTab(root, id, doc(d))
+    root = openTab(root, id, { kind: 'compare', leftDocId: 'old1', rightDocId: 'old3' })
+    const out = remapDocIds(deepFreeze(root), new Map([['old1', 'new1'], ['old2', 'new2']]))
+    expect(findLeaf(out, id)!.tabs).toEqual([doc('new1'), doc('new2')])
+  })
+  it('keeps the same tab active when it survives, otherwise clamps', () => {
+    let root: LayoutNode = newLeaf()
+    const id = (root as ReturnType<typeof newLeaf>).id
+    for (const d of ['a', 'b', 'c']) root = openTab(root, id, doc(d))
+    root = setActiveTab(root, id, 2)
+    const keepC = remapDocIds(root, new Map([['a', 'a2'], ['c', 'c2']]))
+    expect(findLeaf(keepC, id)).toMatchObject({ active: 1 })
+    const dropC = remapDocIds(root, new Map([['a', 'a2']]))
+    expect(findLeaf(dropC, id)).toMatchObject({ active: 0 })
+    const none = remapDocIds(root, new Map())
+    expect(findLeaf(none, id)).toMatchObject({ tabs: [], active: 0 })
+  })
+  it('remaps inside nested splits and leaves empty leaves in place', () => {
+    const base = newLeaf()
+    const { root: split, added } = splitNew(base, base.id, 'row')
+    let root = openTab(split, base.id, doc('x'))
+    root = openTab(root, added!.id, doc('y'))
+    const out = remapDocIds(root, new Map([['x', 'x2']]))
+    expect(countLeaves(out)).toBe(2)
+    expect(findLeaf(out, base.id)!.tabs).toEqual([doc('x2')])
+    expect(findLeaf(out, added!.id)!.tabs).toEqual([])
   })
 })

@@ -1,0 +1,71 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAutoSaver } from '../../src/renderer/app/autosave'
+import { createDocumentsStore } from '../../src/renderer/store/documents'
+
+const read = (path: string) => ({ path, text: 'x', eol: 'lf' as const, bom: false, kind: 'markdown' as const, readOnly: false })
+
+describe('auto saver', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('saves a modified file document after the delay when enabled', async () => {
+    const documents = createDocumentsStore()
+    const save = vi.fn(async () => true)
+    const saver = createAutoSaver({ documents, save, enabled: () => true, delayMs: 1500 })
+    const id = documents.getState().open(read('/w/a.md'))
+    documents.getState().setText(id, 'changed', 'p')
+    await vi.advanceTimersByTimeAsync(1499)
+    expect(save).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(save).toHaveBeenCalledWith(id)
+    saver.dispose()
+  })
+  it('restarts the delay on further edits', async () => {
+    const documents = createDocumentsStore()
+    const save = vi.fn(async () => true)
+    const saver = createAutoSaver({ documents, save, enabled: () => true, delayMs: 1000 })
+    const id = documents.getState().open(read('/w/a.md'))
+    documents.getState().setText(id, 'one', 'p')
+    await vi.advanceTimersByTimeAsync(800)
+    documents.getState().setText(id, 'two', 'p')
+    await vi.advanceTimersByTimeAsync(800)
+    expect(save).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(save).toHaveBeenCalledTimes(1)
+    saver.dispose()
+  })
+  it('never saves when disabled, for untitled or read-only documents', async () => {
+    const documents = createDocumentsStore()
+    const save = vi.fn(async () => true)
+    let on = false
+    const saver = createAutoSaver({ documents, save, enabled: () => on, delayMs: 100 })
+    const a = documents.getState().open(read('/w/a.md'))
+    documents.getState().setText(a, 'changed', 'p')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(save).not.toHaveBeenCalled()
+    on = true
+    const untitled = documents.getState().openUntitled()
+    documents.getState().setText(untitled, 'x', 'p')
+    const ro = documents.getState().open({ ...read('/w/ro.md'), readOnly: true })
+    documents.getState().setText(ro, 'x', 'p')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(save).not.toHaveBeenCalledWith(untitled)
+    expect(save).not.toHaveBeenCalledWith(ro)
+    saver.dispose()
+  })
+  it('does not save a document that became clean (or was closed) before the timer fired', async () => {
+    const documents = createDocumentsStore()
+    const save = vi.fn(async () => true)
+    const saver = createAutoSaver({ documents, save, enabled: () => true, delayMs: 100 })
+    const a = documents.getState().open(read('/w/a.md'))
+    documents.getState().setText(a, 'changed', 'p')
+    documents.getState().markSaved(a)
+    await vi.advanceTimersByTimeAsync(300)
+    expect(save).not.toHaveBeenCalled()
+    documents.getState().setText(a, 'again', 'p')
+    documents.getState().close(a)
+    await vi.advanceTimersByTimeAsync(300)
+    expect(save).not.toHaveBeenCalled()
+    saver.dispose()
+  })
+})

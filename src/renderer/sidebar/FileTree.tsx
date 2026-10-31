@@ -1,10 +1,11 @@
 import type React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DirEntry } from '../../shared/fsTypes'
 import { getCommands } from '../app/appCommands'
 import { t } from '../app/i18n'
 import { useDocuments } from '../store/documents'
 import { useSettings } from '../store/settings'
+import { useWorkspace } from '../store/workspace'
 import { useDialogs, useToasts } from '../store/ui'
 import { filterEntries, validateEntryName } from './treeUtils'
 
@@ -47,7 +48,8 @@ function NameInput({ initial, error, onCommit, onCancel }: NameInputProps): Reac
 export function FileTree(): React.ReactElement {
   const showAll = useSettings((s) => s.showAllFiles)
   const setShowAll = useSettings((s) => s.setShowAllFiles)
-  const [root, setRoot] = useState<string | null>(null)
+  const root = useWorkspace((s) => s.root)
+  const setRoot = useWorkspace((s) => s.setRoot)
   const [children, setChildren] = useState<Record<string, DirEntry[]>>({})
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -61,6 +63,28 @@ export function FileTree(): React.ReactElement {
       fail(e)
     }
   }, [])
+
+  const childrenRef = useRef(children)
+  childrenRef.current = children
+
+  // A folder restored from the previous session has no cached listing yet.
+  useEffect(() => {
+    if (root && !childrenRef.current[root]) {
+      void load(root)
+      setExpanded(new Set([root]))
+    }
+  }, [root, load])
+
+  // Files created, deleted or moved outside the app: refresh the folders we have listed.
+  useEffect(
+    () =>
+      window.api.onFileChanged((ev) => {
+        if (ev.kind === 'change') return
+        const parent = parentOf(ev.path)
+        if (childrenRef.current[parent]) void load(parent)
+      }),
+    [load]
+  )
 
   const openFolder = async (): Promise<void> => {
     try {

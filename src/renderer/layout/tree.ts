@@ -236,3 +236,31 @@ export function parseLayout(json: unknown): LayoutNode {
   }
   return parsed
 }
+
+/**
+ * Renames the document ids referenced by tabs using `map`; tabs whose document is not in the map
+ * (e.g. a file that no longer exists) are removed. Empty leaves are kept.
+ */
+export function remapDocIds(root: LayoutNode, map: Map<string, string>): LayoutNode {
+  const mapTab = (tab: Tab): Tab | null => {
+    if (tab.kind === 'doc') {
+      const id = map.get(tab.docId)
+      return id ? { ...tab, docId: id } : null
+    }
+    const l = map.get(tab.leftDocId)
+    const r = map.get(tab.rightDocId)
+    return l && r ? { ...tab, leftDocId: l, rightDocId: r } : null
+  }
+  const mapNode = (n: LayoutNode): LayoutNode => {
+    if (n.type === 'split') return { ...n, children: n.children.map(mapNode) }
+    const kept: Array<{ tab: Tab; from: number }> = []
+    n.tabs.forEach((t, from) => {
+      const m = mapTab(t)
+      if (m) kept.push({ tab: m, from })
+    })
+    const survivor = kept.findIndex((k) => k.from === n.active)
+    const active = kept.length === 0 ? 0 : survivor >= 0 ? survivor : Math.min(n.active, kept.length - 1)
+    return { ...n, tabs: kept.map((k) => k.tab), active }
+  }
+  return mapNode(root)
+}

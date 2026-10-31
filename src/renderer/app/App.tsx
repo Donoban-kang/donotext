@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 import { SplitView } from '../layout/SplitView'
 import { Sidebar } from '../sidebar/Sidebar'
 import { useDocuments } from '../store/documents'
+import { useSettings } from '../store/settings'
+import { useWorkspace } from '../store/workspace'
 import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
@@ -39,6 +41,9 @@ export function App(): React.ReactElement {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const autoSave = useSettings((s) => s.autoSave)
+  const setAutoSave = useSettings((s) => s.setAutoSave)
+  const recent = useWorkspace((s) => s.recent)
   const c = getCommands()
   return (
     <div className="dn-app" data-testid="workspace">
@@ -51,6 +56,22 @@ export function App(): React.ReactElement {
         <button disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
           {activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}
         </button>
+        <select
+          aria-label={t('recentFiles')}
+          value=""
+          disabled={recent.length === 0}
+          onChange={(e) => e.target.value && void c.openPath(e.target.value)}
+        >
+          <option value="">{t('recentFiles')}</option>
+          {recent.map((p) => (
+            <option key={p} value={p} title={p}>
+              {p.slice(Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')) + 1)}
+            </option>
+          ))}
+        </select>
+        <label className="dn-toolbar-check">
+          <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> {t('autoSave')}
+        </label>
       </header>
       <div className="dn-body">
         <Sidebar />

@@ -3,7 +3,10 @@ import { join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
 import { registerIpc } from './ipcHandlers'
+import { IPC } from '../shared/ipc'
 import { FsService } from './services/fsService'
+import { SessionStore } from './services/sessionStore'
+import { WatchService } from './services/watchService'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -35,8 +38,12 @@ void app.whenReady().then(() => {
       }
     })
   })
+  const watcher = new WatchService((e) => mainWindow?.webContents.send(IPC.fileChanged, e))
+  app.on('before-quit', () => void watcher.close())
   registerIpc({
     fs: new FsService({ trash: (p) => shell.trashItem(p) }),
+    sessions: new SessionStore(app.getPath('userData')),
+    watcher,
     getWindow: () => mainWindow
   })
   createWindow()

@@ -44,6 +44,8 @@ export function createDocumentsStore() {
   let normalizer: (md: string) => string = (md) => md
   const listeners = new Map<string, Set<TextListener>>()
   let counter = 0
+  // Unique per run so ids of backups left by an earlier run can never collide with new documents.
+  const run = Date.now().toString(36)
   let untitledCounter = 0
 
   const normalizedBaseline = (text: string, sourceOnly: boolean): string => {
@@ -65,7 +67,7 @@ export function createDocumentsStore() {
     open(r) {
       const existing = Object.values(get().docs).find((d) => d.path === r.path)
       if (existing) return existing.id
-      const id = `doc-${++counter}`
+      const id = `doc-${run}-${++counter}`
       const sourceOnly = r.kind === 'sourceOnly'
       const doc: Doc = {
         id,
@@ -87,7 +89,7 @@ export function createDocumentsStore() {
     },
 
     openUntitled() {
-      const id = `doc-${++counter}`
+      const id = `doc-${run}-${++counter}`
       const doc: Doc = {
         id,
         path: null,

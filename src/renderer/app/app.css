@@ -50,3 +50,6 @@ body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-s
 .dn-tree-error { color: #c33; font-size: 12px; display: block; }
 .dn-outline li button { border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; padding: 3px 8px; width: 100%; }
 .dn-outline li button:hover { background: rgba(127,127,127,.12); }
+
+.dn-toolbar-check { font-size: 13px; margin-left: 4px; }
+.dn-banner button { margin-left: 8px; }

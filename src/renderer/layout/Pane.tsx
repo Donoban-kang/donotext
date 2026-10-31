@@ -1,4 +1,5 @@
 import type React from 'react'
+import { getCommands } from '../app/appCommands'
 import { t } from '../app/i18n'
 import { SourceEditor } from '../editor/SourceEditor'
 import { WysiwygEditor } from '../editor/WysiwygEditor'
@@ -16,6 +17,15 @@ function PaneBody({ leaf }: { leaf: Leaf }): React.ReactElement {
   const view = doc.sourceOnly ? 'source' : tab.view
   return (
     <>
+      {doc.external !== 'none' && (
+        <div role="alert" className="dn-banner" data-testid="external-banner">
+          <span>{doc.external === 'changed' ? t('externalChanged') : t('externalDeleted')}</span>
+          {doc.external === 'changed' && (
+            <button onClick={() => void getCommands().reloadFromDisk(doc.id)}>{t('reload')}</button>
+          )}
+          <button onClick={() => getCommands().keepLocal(doc.id)}>{t('keepMine')}</button>
+        </div>
+      )}
       {doc.warning && (
         <div role="alert" className="dn-banner" data-testid="doc-warning">
           {doc.warning === 'tooLarge' ? t('warnTooLarge') : t('warnNotUtf8')}

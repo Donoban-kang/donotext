@@ -1,0 +1,55 @@
+import { describe, expect, it, vi } from 'vitest'
+import { createMockApi } from '../../src/renderer/api/mockApi'
+import { createBackupWriter } from '../../src/renderer/app/backup'
+import { createDocumentsStore } from '../../src/renderer/store/documents'
+
+const read = (path: string, text = 'x') => ({ path, text, eol: 'lf' as const, bom: false, kind: 'markdown' as const, readOnly: false })
+
+describe('backup writer', () => {
+  it('backs up only modified documents and skips unchanged versions', async () => {
+    const { api } = createMockApi()
+    const documents = createDocumentsStore()
+    const w = vi.spyOn(api, 'writeBackup')
+    const clean = documents.getState().open(read('/w/clean.md'))
+    const dirty = documents.getState().open(read('/w/dirty.md'))
+    documents.getState().setText(dirty, 'changed', 'p')
+    const backup = createBackupWriter({ api, documents })
+    await backup.tick()
+    expect(w).toHaveBeenCalledTimes(1)
+    expect(w).toHaveBeenCalledWith(dirty, 'changed')
+    await backup.tick()
+    expect(w).toHaveBeenCalledTimes(1)
+    documents.getState().setText(dirty, 'changed again', 'p')
+    await backup.tick()
+    expect(w).toHaveBeenCalledTimes(2)
+    expect(clean).toBeDefined()
+  })
+  it('clears the backup once the document is saved or closed', async () => {
+    const { api } = createMockApi()
+    const documents = createDocumentsStore()
+    const clear = vi.spyOn(api, 'clearBackup')
+    const a = documents.getState().open(read('/w/a.md'))
+    const b = documents.getState().open(read('/w/b.md'))
+    documents.getState().setText(a, 'changed', 'p')
+    documents.getState().setText(b, 'changed', 'p')
+    const backup = createBackupWriter({ api, documents })
+    await backup.tick()
+    documents.getState().markSaved(a)
+    documents.getState().close(b)
+    await backup.tick()
+    expect(clear).toHaveBeenCalledWith(a)
+    expect(clear).toHaveBeenCalledWith(b)
+    expect(await api.loadBackups()).toEqual({})
+  })
+  it('keeps going when a backup write fails', async () => {
+    const { api } = createMockApi()
+    const documents = createDocumentsStore()
+    vi.spyOn(api, 'writeBackup').mockRejectedValueOnce(new Error('disk full'))
+    const a = documents.getState().open(read('/w/a.md'))
+    documents.getState().setText(a, 'changed', 'p')
+    const backup = createBackupWriter({ api, documents })
+    await expect(backup.tick()).resolves.toBeUndefined()
+    await backup.tick()
+    expect(await api.loadBackups()).toEqual({ [a]: 'changed' })
+  })
+})

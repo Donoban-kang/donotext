@@ -2,6 +2,8 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { MARKDOWN_EXTENSIONS } from '../shared/fileKind'
 import { IPC } from '../shared/ipc'
 import type { FsService } from './services/fsService'
+import type { SessionStore } from './services/sessionStore'
+import type { WatchService } from './services/watchService'
 
 const MAX_PATH = 4096
 
@@ -23,10 +25,12 @@ function notImplemented(task: number): () => never {
 
 export interface IpcDeps {
   fs: FsService
+  sessions: SessionStore
+  watcher: WatchService
   getWindow: () => BrowserWindow | null
 }
 
-export function registerIpc({ fs, getWindow }: IpcDeps): void {
+export function registerIpc({ fs, sessions, watcher, getWindow }: IpcDeps): void {
   const markdownFilter = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS.map((e) => e.slice(1)) }
   const allFilter = { name: 'All Files', extensions: ['*'] }
 
@@ -74,11 +78,31 @@ export function registerIpc({ fs, getWindow }: IpcDeps): void {
     await shell.openExternal(u.toString())
   })
 
-  // Replaced by later tasks (watch/session: Task 12, image: Task 15, export: Task 17).
-  ipcMain.on(IPC.watch, () => {})
-  ipcMain.handle(IPC.loadSession, notImplemented(12))
-  ipcMain.handle(IPC.saveSession, notImplemented(12))
-  ipcMain.handle(IPC.writeBackup, notImplemented(12))
+  ipcMain.on(IPC.watch, (_e, paths: unknown) => {
+    if (!Array.isArray(paths) || paths.length > 200) return
+    watcher.setPaths(paths.filter((p): p is string => typeof p === 'string' && p.length <= MAX_PATH && fs.isAllowed(p)))
+  })
+
+  ipcMain.handle(IPC.loadSession, async () => {
+    const s = await sessions.load()
+    if (s) {
+      // The session file is written by this app into its own data folder; paths it lists
+      // were granted in the previous run, so grant them again for the restored workspace.
+      for (const d of s.docs) if (typeof d.path === 'string') fs.grant(d.path)
+      if (typeof s.folder === 'string') fs.grant(s.folder)
+      for (const p of s.recent) if (typeof p === 'string') fs.grant(p)
+    }
+    return s
+  })
+  ipcMain.handle(IPC.saveSession, (_e, s) => {
+    if (typeof s !== 'object' || s === null || (s as { version?: unknown }).version !== 1) throw new Error('Invalid session')
+    return sessions.save(s)
+  })
+  ipcMain.handle(IPC.writeBackup, (_e, id, text) => sessions.writeBackup(str(id, 'docId', 64), str(text, 'text', Number.MAX_SAFE_INTEGER)))
+  ipcMain.handle(IPC.clearBackup, (_e, id) => sessions.clearBackup(str(id, 'docId', 64)))
+  ipcMain.handle(IPC.loadBackups, () => sessions.readBackups())
+
+  // Replaced by later tasks (image: Task 15, export: Task 17).
   ipcMain.handle(IPC.saveImage, notImplemented(15))
   ipcMain.handle(IPC.exportHtml, notImplemented(17))
   ipcMain.handle(IPC.exportPdf, notImplemented(17))

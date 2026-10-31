@@ -28,15 +28,18 @@ function join(dir: string, name: string): string {
 }
 
 /** In-memory DonotextApi used when `window.api` is absent (browser mode, tests). */
-export function createMockApi(seed: Record<string, string> = {}): { api: DonotextApi; controller: MockController } {
+export function createMockApi(
+  seed: Record<string, string> = {},
+  initial: { session?: SessionData | null; backups?: Record<string, string> } = {}
+): { api: DonotextApi; controller: MockController } {
   const files = new Map<string, Stored>()
   const dirs = new Set<string>()
   const listeners = new Set<(e: FileChange) => void>()
   const openQueue: string[][] = []
   const folderQueue: Array<string | null> = []
   const saveAsQueue: Array<string | null> = []
-  let session: SessionData | null = null
-  const backups = new Map<string, string>()
+  let session: SessionData | null = initial.session ?? null
+  const backups = new Map<string, string>(Object.entries(initial.backups ?? {}))
   let imageCounter = 0
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
@@ -131,6 +134,12 @@ export function createMockApi(seed: Record<string, string> = {}): { api: Donotex
     },
     async writeBackup(docId, text) {
       backups.set(docId, text)
+    },
+    async clearBackup(docId) {
+      backups.delete(docId)
+    },
+    async loadBackups() {
+      return Object.fromEntries(backups)
     },
     async exportHtml(html, suggestedName) {
       const p = `/exports/${suggestedName}`

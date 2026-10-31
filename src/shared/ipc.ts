@@ -6,7 +6,7 @@ export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'] as const
 
 export interface FileChange {
   path: string
-  kind: 'change' | 'unlink'
+  kind: 'change' | 'unlink' | 'add'
 }
 
 export const IPC = {
@@ -24,6 +24,8 @@ export const IPC = {
   loadSession: 'session:load',
   saveSession: 'session:save',
   writeBackup: 'session:backup',
+  clearBackup: 'session:clearBackup',
+  loadBackups: 'session:backups',
   exportHtml: 'export:html',
   exportPdf: 'export:pdf',
   saveImage: 'image:save',
@@ -45,6 +47,8 @@ export interface DonotextApi {
   loadSession(): Promise<SessionData | null>
   saveSession(s: SessionData): Promise<void>
   writeBackup(docId: string, text: string): Promise<void>
+  clearBackup(docId: string): Promise<void>
+  loadBackups(): Promise<Record<string, string>>
   exportHtml(html: string, suggestedName: string): Promise<string | null>
   exportPdf(html: string, suggestedName: string): Promise<string | null>
   saveImage(docPath: string | null, bytes: Uint8Array, ext: string): Promise<string>
