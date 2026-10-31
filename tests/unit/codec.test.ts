@@ -34,15 +34,18 @@ describe('normalizeMarkdown', () => {
     expect(get('tasks.md')).toMatch(/- \[x\] 끝낸 일/)
   })
 
-  it('drops unsafe link targets but keeps the link text', () => {
-    const out = normalizeMarkdown('[x](javascript:alert(1)) and [y](https://ok.example)')
-    expect(out).not.toContain('javascript:')
-    expect(out).toContain('x')
+  it('keeps unsafe link and image targets in the saved markdown (only rendering neutralises them)', () => {
+    const out = normalizeMarkdown('[x](javascript:alert(1)) and ![y](file:///etc/passwd) and [ok](https://ok.example)\n')
+    expect(out).toContain('javascript:alert(1)')
+    expect(out).toContain('file:///etc/passwd')
     expect(out).toContain('https://ok.example')
   })
 
-  it('drops unsafe image sources', () => {
-    expect(normalizeMarkdown('![a](javascript:alert(1))')).not.toContain('javascript:')
+  it('renders unsafe targets inertly in HTML while keeping the link text', () => {
+    const html = markdownToHtml('[x](javascript:alert(1)) and [y](https://ok.example) ![z](javascript:alert(1))\n')
+    expect(html).not.toContain('javascript:')
+    expect(html).toContain('x')
+    expect(html).toContain('https://ok.example')
   })
 
   it('round-trips block and inline raw HTML verbatim', () => {

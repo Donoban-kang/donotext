@@ -78,3 +78,67 @@ test.describe('opening is not editing', () => {
   }
 })
 
+
+test.describe('editing one character never changes what the document means', () => {
+  const original = [
+    '# 제목',
+    '',
+    '\\# 이것은 제목이 아닙니다',
+    '',
+    '2024\\. 올해의 기록',
+    '',
+    '각주가 있는 문장[^1] 입니다.',
+    '',
+    '[^1]: 각주 내용',
+    '',
+    '[참조 링크][ref] 와 [위험한 링크](javascript:alert(1))',
+    '',
+    '![공백 있는 그림](<assets/a b.png>)',
+    '',
+    '[ref]: https://example.com "예시"',
+    '',
+    '마지막 문단',
+    ''
+  ].join('\n')
+
+  test('typing and saving keeps escapes, footnotes, reference definitions, spaced image paths and unsafe links', async ({ page }) => {
+    await page.addInitScript((s) => {
+      window.__DONOTEXT_SEED__ = s
+    }, { '/w/r.md': original })
+    await page.goto('/')
+    await page.evaluate(() => window.__mock!.queueOpen(['/w/r.md']))
+    await page.getByRole('button', { name: '열기', exact: true }).click()
+    await expect(page.locator('.ProseMirror h1')).toHaveText('제목')
+    await focusEditorAtEnd(page)
+    await page.keyboard.type('!')
+    await expect(page.getByTestId('tab-dirty')).toBeVisible()
+    await page.keyboard.press('ControlOrMeta+s')
+    await expect(page.getByTestId('tab-dirty')).toHaveCount(0)
+    const saved = await page.evaluate(() => window.__mock!.files.get('/w/r.md')!.text)
+    expect(saved).toContain('마지막 문단!')
+    expect(saved).toContain('\\# 이것은 제목이 아닙니다')
+    expect(saved).toContain('2024\\. 올해의 기록')
+    expect(saved).toContain('[^1]')
+    expect(saved).toContain('[^1]: 각주 내용')
+    expect(saved).not.toContain('[^1](')
+    expect(saved).toContain('[ref]: https://example.com "예시"')
+    expect(saved).toContain('<assets/a b.png>')
+    expect(saved).toContain('javascript:alert(1)')
+    // …and the editor never turns the escaped lines into real headings or lists
+    await expect(page.locator('.ProseMirror h1')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror ol')).toHaveCount(0)
+  })
+
+  test('dangerous targets are shown inertly in the editor', async ({ page }) => {
+    await page.addInitScript((s) => {
+      window.__DONOTEXT_SEED__ = s
+    }, { '/w/d.md': '[click](javascript:alert(1)) ![x](javascript:alert(2)) ![y](file:///etc/passwd)\n' })
+    await page.goto('/')
+    await page.evaluate(() => window.__mock!.queueOpen(['/w/d.md']))
+    await page.getByRole('button', { name: '열기', exact: true }).click()
+    await expect(page.locator('.ProseMirror')).toContainText('click')
+    await expect(page.locator('.ProseMirror a[href^="javascript" i]')).toHaveCount(0)
+    await expect(page.locator('.ProseMirror img:not(.ProseMirror-separator)')).toHaveCount(0)
+    await expect(page.locator('.ProseMirror .dn-blocked-image')).toHaveCount(2)
+  })
+})

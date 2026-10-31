@@ -1,9 +1,11 @@
 import type { JSONContent } from '@tiptap/core'
 import { generateHTML } from '@tiptap/html'
 import { MarkdownManager } from '@tiptap/markdown'
+import { isSafeImageSrc } from '../../../shared/images'
 import { isSafeLinkUrl } from '../../../shared/links'
 import { getExtensions } from './extensions'
 import { splitFrontMatter } from './frontMatter'
+import { escapeLineStarts } from './markdownText'
 import { wouldParseAsMath } from './math'
 import { htmlSource, type HtmlToken } from './rawHtml'
 
@@ -23,17 +25,12 @@ function getManager(): MarkdownManager {
   return manager
 }
 
-const SAFE_DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp);base64,/i
-
-function isSafeImageSrc(src: string): boolean {
-  const s = src.replace(/[\u0000-\u001f\u007f]/g, '').trim()
-  if (SAFE_DATA_IMAGE.test(s)) return true
-  if (/^donotext-file:/i.test(s)) return true
-  return isSafeLinkUrl(s) && !/^mailto:/i.test(s)
-}
-
-/** Removes link marks and image nodes that point at unsafe URL schemes. */
-function sanitizeNode(node: JSONContent): JSONContent | null {
+/**
+ * Display/export only: removes link marks and image nodes that point at dangerous schemes
+ * (javascript:, file:, data:text/html …). The saved markdown is NEVER changed by this: a document
+ * the user wrote must come back exactly as meant, and rendering is where the danger lies.
+ */
+function neutralizeUnsafeTargets(node: JSONContent): JSONContent | null {
   if (node.type === 'image') {
     const src = typeof node.attrs?.src === 'string' ? node.attrs.src : ''
     if (!isSafeImageSrc(src)) return null
@@ -46,7 +43,7 @@ function sanitizeNode(node: JSONContent): JSONContent | null {
     if (out.marks.length === 0) delete out.marks
   }
   if (node.content) {
-    out.content = node.content.map(sanitizeNode).filter((n): n is JSONContent => n !== null)
+    out.content = node.content.map(neutralizeUnsafeTargets).filter((n): n is JSONContent => n !== null)
   }
   return out
 }
@@ -54,34 +51,50 @@ function sanitizeNode(node: JSONContent): JSONContent | null {
 function parseSafe(md: string): JSONContent {
   const { frontMatter, body } = splitFrontMatter(md)
   // The blank line that separates front matter from the body is not content.
-  const json = sanitizeNode(getManager().parse(frontMatter === null ? body : body.replace(/^\n+/, ''))) ?? { type: 'doc', content: [] }
+  const json = getManager().parse(frontMatter === null ? body : body.replace(/^\n+/, ''))
   if (frontMatter === null) return json
   const fm: JSONContent = { type: 'frontMatter', content: frontMatter ? [{ type: 'text', text: frontMatter }] : [] }
   return { ...json, content: [fm, ...(json.content ?? [])] }
 }
 
+interface Stand { dollar: string; esc: string }
+
 /**
- * Marks `$` in plain text that would otherwise be read back as a formula. The serializer escapes
- * backslashes itself, so a sentinel character stands in for the dollar sign and is turned into
- * `\$` after serialization.
+ * Plain text can contain characters that would change meaning once written back: `$` pairs that
+ * read as math, and block markers at the start of a line ("1." "#" "-" …). The serializer escapes
+ * backslashes itself, so private-use stand-in characters mark where a backslash must go; they are
+ * swapped for real backslashes after serialization.
  */
-function markLiteralDollars(node: JSONContent, sentinel: string): JSONContent {
+function prepareForSerialize(node: JSONContent, st: Stand, inCell = false): JSONContent {
   if (node.type === 'text') {
     const isCode = node.marks?.some((m) => m.type === 'code')
-    return !isCode && node.text && wouldParseAsMath(node.text) ? { ...node, text: node.text.split('$').join(sentinel) } : node
+    return !isCode && node.text && wouldParseAsMath(node.text) ? { ...node, text: node.text.split('$').join(st.dollar) } : node
   }
-  if (node.type === 'codeBlock' || node.type === 'frontMatter') return node
-  return node.content ? { ...node, content: node.content.map((c) => markLiteralDollars(c, sentinel)) } : node
+  if (node.type === 'codeBlock' || node.type === 'frontMatter' || !node.content) return node
+  const cell = inCell || node.type === 'tableCell' || node.type === 'tableHeader'
+  if (node.type === 'paragraph' && !cell) {
+    let lineStart = true
+    const content = node.content.map((c) => {
+      let out = prepareForSerialize(c, st, cell)
+      // Only unmarked text starts a line as-is; bold, links, code … put their own characters first.
+      if (out.type === 'text' && out.text && !out.marks?.length) out = { ...out, text: escapeLineStarts(out.text, lineStart, st.esc) }
+      lineStart = c.type === 'hardBreak'
+      return out
+    })
+    return { ...node, content }
+  }
+  return { ...node, content: node.content.map((c) => prepareForSerialize(c, st, cell)) }
 }
 
-/** A private-use character that does not occur anywhere in the document. */
-function pickSentinel(doc: JSONContent): string {
+/** Private-use characters that occur nowhere in the document. */
+function pickStandIns(doc: JSONContent): Stand {
   const text = JSON.stringify(doc)
-  for (let code = 0xe000; code < 0xf8ff; code++) {
+  const free: string[] = []
+  for (let code = 0xe000; code < 0xf8ff && free.length < 2; code++) {
     const ch = String.fromCharCode(code)
-    if (!text.includes(ch)) return ch
+    if (!text.includes(ch)) free.push(ch)
   }
-  return '\uE000'
+  return { dollar: free[0] ?? '\uE000', esc: free[1] ?? '\uE001' }
 }
 
 const withoutFrontMatter = (doc: JSONContent): JSONContent => ({
@@ -94,8 +107,13 @@ export function serializeMarkdown(doc: JSONContent): string {
   const first = doc.content?.[0]
   const fmText = first?.type === 'frontMatter' ? (first.content ?? []).map((n) => n.text ?? '').join('') : null
   const bodyDoc = withoutFrontMatter(doc)
-  const sentinel = pickSentinel(bodyDoc)
-  const body = getManager().serialize(markLiteralDollars(bodyDoc, sentinel)).split(sentinel).join('\\$')
+  const st = pickStandIns(bodyDoc)
+  const body = getManager()
+    .serialize(prepareForSerialize(bodyDoc, st))
+    .split(st.dollar)
+    .join('\\$')
+    .split(st.esc)
+    .join('\\')
   const bodyText = body.trim() === '' ? '' : body.replace(/^\n+/, '').replace(/\n*$/, '\n')
   if (fmText === null) return bodyText
   const head = `---\n${fmText}${fmText ? '\n' : ''}---\n`
@@ -112,5 +130,6 @@ export function normalizeMarkdown(md: string): string {
 }
 
 export function markdownToHtml(md: string): string {
-  return generateHTML(withoutFrontMatter(parseSafe(md)), getExtensions())
+  const doc = neutralizeUnsafeTargets(withoutFrontMatter(parseSafe(md))) ?? { type: 'doc', content: [] }
+  return generateHTML(doc, getExtensions())
 }

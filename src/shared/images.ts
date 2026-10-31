@@ -1,3 +1,5 @@
+import { isSafeLinkUrl } from './links'
+
 /** Image types the app writes and serves. SVG is deliberately excluded: it can carry script. */
 export const ALLOWED_IMAGE_EXTS = ['png', 'jpg', 'gif', 'webp'] as const
 export type ImageExt = (typeof ALLOWED_IMAGE_EXTS)[number]
@@ -40,6 +42,16 @@ export function matchesImageSignature(bytes: Uint8Array, ext: ImageExt): boolean
 }
 
 export const IMAGE_SCHEME = 'donotext-file'
+
+const SAFE_DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp);base64,/i
+
+/** Whether an image `src` may be loaded: http(s), relative paths, our local scheme, or a real image data URI. */
+export function isSafeImageSrc(src: string): boolean {
+  const s = src.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  if (SAFE_DATA_IMAGE.test(s)) return true
+  if (new RegExp(`^${IMAGE_SCHEME}:`, 'i').test(s)) return true
+  return isSafeLinkUrl(s) && !/^mailto:/i.test(s)
+}
 
 export function toImageUrl(absolutePath: string): string {
   return `${IMAGE_SCHEME}://local/${encodeURIComponent(absolutePath)}`
