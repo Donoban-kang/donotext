@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { MARKDOWN_EXTENSIONS } from '../shared/fileKind'
 import { IPC } from '../shared/ipc'
 import type { FsService } from './services/fsService'
+import type { ImageService } from './services/imageService'
 import type { SessionStore } from './services/sessionStore'
 import type { WatchService } from './services/watchService'
 
@@ -27,10 +28,11 @@ export interface IpcDeps {
   fs: FsService
   sessions: SessionStore
   watcher: WatchService
+  images: ImageService
   getWindow: () => BrowserWindow | null
 }
 
-export function registerIpc({ fs, sessions, watcher, getWindow }: IpcDeps): void {
+export function registerIpc({ fs, sessions, watcher, images, getWindow }: IpcDeps): void {
   const markdownFilter = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS.map((e) => e.slice(1)) }
   const allFilter = { name: 'All Files', extensions: ['*'] }
 
@@ -102,8 +104,13 @@ export function registerIpc({ fs, sessions, watcher, getWindow }: IpcDeps): void
   ipcMain.handle(IPC.clearBackup, (_e, id) => sessions.clearBackup(str(id, 'docId', 64)))
   ipcMain.handle(IPC.loadBackups, () => sessions.readBackups())
 
-  // Replaced by later tasks (image: Task 15, export: Task 17).
-  ipcMain.handle(IPC.saveImage, notImplemented(15))
+  ipcMain.handle(IPC.saveImage, (_e, docPath, bytes, ext) => {
+    if (docPath !== null) str(docPath, 'docPath')
+    if (!(bytes instanceof Uint8Array)) throw new Error('Invalid argument: bytes')
+    return images.save(docPath as string | null, bytes, str(ext, 'ext', 16))
+  })
+
+  // Replaced by a later task (export: Task 17).
   ipcMain.handle(IPC.exportHtml, notImplemented(17))
   ipcMain.handle(IPC.exportPdf, notImplemented(17))
 }

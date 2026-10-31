@@ -1,12 +1,20 @@
-import { app, BrowserWindow, session, shell } from 'electron'
+import { app, BrowserWindow, protocol, session, shell } from 'electron'
 import { join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
 import { registerIpc } from './ipcHandlers'
 import { IPC } from '../shared/ipc'
+import { IMAGE_SCHEME } from '../shared/images'
 import { FsService } from './services/fsService'
+import { handleImageRequest } from './services/imageProtocol'
+import { ImageService } from './services/imageService'
 import { SessionStore } from './services/sessionStore'
 import { WatchService } from './services/watchService'
+
+// Must run before the app is ready: lets the renderer load images through our scoped scheme.
+protocol.registerSchemesAsPrivileged([
+  { scheme: IMAGE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
+])
 
 let mainWindow: BrowserWindow | null = null
 
@@ -40,8 +48,11 @@ void app.whenReady().then(() => {
   })
   const watcher = new WatchService((e) => mainWindow?.webContents.send(IPC.fileChanged, e))
   app.on('before-quit', () => void watcher.close())
+  const fsService = new FsService({ trash: (p) => shell.trashItem(p) })
+  protocol.handle(IMAGE_SCHEME, (request) => handleImageRequest(request, fsService))
   registerIpc({
-    fs: new FsService({ trash: (p) => shell.trashItem(p) }),
+    fs: fsService,
+    images: new ImageService(fsService),
     sessions: new SessionStore(app.getPath('userData')),
     watcher,
     getWindow: () => mainWindow

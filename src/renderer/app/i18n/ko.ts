@@ -33,6 +33,8 @@ export const ko = {
   confirm: '확인',
   sessionRecovered: '저장하지 않았던 변경 내용 {count}건을 복구했습니다.',
   fsFailed: '파일 작업에 실패했습니다: {reason}',
+  imageNeedsSave: '이미지를 붙여넣으려면 먼저 문서를 저장하세요.',
+  imageSaveFailed: '이미지를 저장하지 못했습니다: {reason}',
   autoSave: '자동 저장',
   compare: '비교…',
   compareTitle: '문서 비교',

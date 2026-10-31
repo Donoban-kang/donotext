@@ -1,9 +1,14 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { JSONContent } from '@tiptap/core'
+import type { Editor } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
+import { docDirOf, imageExtFromMime } from '../../shared/images'
+import { t } from '../app/i18n'
+import { useToasts } from '../store/ui'
 import { useDocuments } from '../store/documents'
 import { parseMarkdown, serializeMarkdown } from './markdown/codec'
+import { ImageDisplay } from './imageDisplay'
 import { FindPanel } from './FindPanel'
 import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
@@ -27,9 +32,35 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   const suppress = useRef(false)
   const debouncer = useRef(createDebouncer(EDIT_DEBOUNCE_MS))
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
+  const editorRef = useRef<Editor | null>(null)
+
+  const insertImages = async (files: File[]): Promise<void> => {
+    const doc = useDocuments.getState().docs[docId]
+    if (!doc?.path) {
+      useToasts.getState().push({ kind: 'warning', message: t('imageNeedsSave') })
+      return
+    }
+    for (const file of files) {
+      const ext = imageExtFromMime(file.type)
+      if (!ext) continue
+      try {
+        const rel = await window.api.saveImage(doc.path, new Uint8Array(await file.arrayBuffer()), ext)
+        editorRef.current?.chain().focus().setImage({ src: rel, alt: '' }).run()
+      } catch (e) {
+        useToasts.getState().push({ kind: 'error', message: t('imageSaveFailed', { reason: e instanceof Error ? e.message : String(e) }) })
+      }
+    }
+  }
 
   const editor = useEditor({
-    extensions: [...getExtensions(), SearchReplace.configure({ onOpen: (m) => setFindMode(m) })],
+    extensions: [
+      ...getExtensions().map((ext) =>
+        ext.name === 'image'
+          ? ImageDisplay.configure({ getBaseDir: () => docDirOf(useDocuments.getState().docs[docId]?.path ?? null) })
+          : ext
+      ),
+      SearchReplace.configure({ onOpen: (m) => setFindMode(m) })
+    ],
     content: toContent(useDocuments.getState().docs[docId]?.text ?? ''),
     editable: !readOnly,
     immediatelyRender: true,
@@ -41,6 +72,13 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     },
     editorProps: {
       attributes: { class: 'dn-wysiwyg', 'data-testid': `wysiwyg-${paneId}` },
+      handlePaste: (_view, event) => {
+        const images = Array.from(event.clipboardData?.files ?? []).filter((f) => imageExtFromMime(f.type) !== null)
+        if (images.length === 0) return false
+        event.preventDefault()
+        void insertImages(images)
+        return true
+      },
       handleDOMEvents: {
         compositionstart: () => {
           composing.current = true
@@ -56,6 +94,8 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
       }
     }
   })
+
+  editorRef.current = editor
 
   const applyRemote = (text: string): void => {
     if (!editor || editor.isDestroyed) return
