@@ -1,30 +1,15 @@
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile, open } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { classifyPath, type FileKind } from '../../shared/fileKind'
+import { classifyPath } from '../../shared/fileKind'
+import type { DirEntry, ReadResult, Warning } from '../../shared/fsTypes'
 import { decodeText, encodeText, type Eol } from '../../shared/textFormat'
-
-export type Warning = 'notUtf8' | 'tooLarge'
-
-export interface ReadResult {
-  path: string
-  text: string
-  eol: Eol
-  bom: boolean
-  kind: FileKind
-  readOnly: boolean
-  warning?: Warning
-}
-
-export interface DirEntry {
-  name: string
-  path: string
-  isDir: boolean
-}
 
 export interface FsServiceOptions {
   maxBytes?: number
   trash?: (path: string) => Promise<void>
 }
+
+export type { DirEntry, ReadResult, Warning }
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024
 
