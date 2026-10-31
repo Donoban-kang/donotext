@@ -1,9 +1,11 @@
 import type React from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { useDocuments } from '../store/documents'
 import { parseMarkdown, serializeMarkdown } from './markdown/codec'
+import { FindPanel } from './FindPanel'
+import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
 import './editor.css'
@@ -24,9 +26,10 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   const pendingRemote = useRef<string | null>(null)
   const suppress = useRef(false)
   const debouncer = useRef(createDebouncer(EDIT_DEBOUNCE_MS))
+  const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
 
   const editor = useEditor({
-    extensions: getExtensions(),
+    extensions: [...getExtensions(), SearchReplace.configure({ onOpen: (m) => setFindMode(m) })],
     content: toContent(useDocuments.getState().docs[docId]?.text ?? ''),
     editable: !readOnly,
     immediatelyRender: true,
@@ -93,5 +96,10 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, docId, paneId])
 
-  return <EditorContent editor={editor} className="dn-editor-host" />
+  return (
+    <div className="dn-editor-wrap">
+      {editor && findMode && <FindPanel editor={editor} mode={findMode} onClose={() => setFindMode(null)} />}
+      <EditorContent editor={editor} className="dn-editor-host" />
+    </div>
+  )
 }

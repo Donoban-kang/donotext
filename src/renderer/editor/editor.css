@@ -11,3 +11,10 @@
 .dn-wysiwyg ul[data-type="taskList"] li { display: flex; gap: 8px; }
 .dn-wysiwyg img { max-width: 100%; }
 .dn-wysiwyg pre[data-raw-html], .dn-wysiwyg code[data-raw-html] { color: inherit; opacity: .8; }
+.dn-source-host { height: 100%; overflow: auto; }
+.dn-source-host .cm-editor { height: 100%; }
+.dn-source-host .cm-scroller { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; line-height: 1.6; padding: 12px 0; }
+.dn-editor-wrap { position: relative; height: 100%; }
+.dn-find-panel { position: absolute; top: 8px; right: 24px; z-index: 5; display: flex; gap: 6px; align-items: center; padding: 6px 8px; background: Canvas; color: CanvasText; border: 1px solid rgba(127,127,127,.5); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.dn-search-match { background: rgba(255, 213, 0, .45); }
+.dn-search-current { background: rgba(255, 140, 0, .65); }
