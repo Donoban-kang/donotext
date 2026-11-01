@@ -57,6 +57,12 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
     setStats(null)
   }
   useEffect(() => cancel, [])
+  // A tab that disappears under the mouse (closed, moved) never reports "mouse left"; drop its hover card here.
+  useEffect(() => {
+    cancel()
+    setStats(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaf.tabs])
   return (
     <div className="dn-tabbar" role="tablist" onScroll={hide}>
       {leaf.tabs.map((tab, i) => (
@@ -102,7 +108,10 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
             className="dn-tab-close"
             aria-label={t('closeTab')}
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={() => void getCommands().closeTab(leaf.id, i)}
+            onClick={() => {
+              hide()
+              void getCommands().closeTab(leaf.id, i)
+            }}
           >
             <Icon name="close" />
           </button>

@@ -93,7 +93,8 @@ describe('replaceAndClose (tab menu)', () => {
     expect((await c.api.readFile('/w/a.md')).text).toBe(ORIGINAL + 'more\n')
     expect(c.documents.getState().docs[c.copy]).toBeUndefined()
     expect(c.documents.getState().docs[c.original].text).toBe(ORIGINAL + 'more\n')
-    expect(allLeaves(c.layout.getState().root).find((l) => l.id === c.right.id)!.tabs).toHaveLength(0)
+    // the copy was the only tab of its pane, so the pane closes with it
+    expect(allLeaves(c.layout.getState().root).map((l) => l.id)).toEqual([c.left.id])
   })
   it('leaves everything alone when the confirmation is declined', async () => {
     const c = await withCopy({ overwrite: false })

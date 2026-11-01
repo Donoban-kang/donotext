@@ -69,6 +69,23 @@ export function createLayoutStore() {
       set({ root, activeLeafId: keep, scrollLink: link && ids.has(link.a) && ids.has(link.b) ? link : null })
     }
 
+    /**
+     * A split pane whose last tab is gone has nothing left to show, so it closes and its neighbour takes
+     * the space. The only remaining pane stays (empty) so the window always has somewhere to open files.
+     */
+    const collapseIfEmpty = (leafId: string): void => {
+      const { root } = get()
+      const leaf = findLeaf(root, leafId)
+      if (!leaf || leaf.tabs.length > 0) return
+      const leaves = allLeaves(root)
+      if (leaves.length < 2) return
+      const at = leaves.findIndex((l) => l.id === leafId)
+      const next = closeLeaf(root, leafId)
+      const rest = allLeaves(next)
+      // Focus moves to the pane that now sits where the closed one was.
+      commit(next, get().activeLeafId === leafId ? rest[Math.min(at, rest.length - 1)].id : undefined)
+    }
+
     return {
       root: initial,
       activeLeafId: initial.id,
@@ -109,6 +126,7 @@ export function createLayoutStore() {
 
       moveTab(from, to) {
         commit(moveTab(get().root, from, to), to.leafId)
+        if (from.leafId !== to.leafId) collapseIfEmpty(from.leafId)
       },
 
       setScrollLink(link) {
@@ -125,6 +143,7 @@ export function createLayoutStore() {
 
       closeTabAt(leafId, index) {
         set((s) => ({ root: closeTab(s.root, leafId, index) }))
+        collapseIfEmpty(leafId)
       },
 
       activateTab(leafId, index) {
