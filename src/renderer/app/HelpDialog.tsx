@@ -11,6 +11,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Ctrl+Shift+S', t('saveAs')],
   ['Ctrl+W', t('closeTab')],
   ['Ctrl+/', t('helpToggleView')],
+  ['Ctrl+,', t('settings')],
   ['Ctrl+\\', t('splitRight')],
   ['Ctrl+Shift+\\', t('splitDown')],
   ['Ctrl+Alt+←', t('helpPrevPane')],

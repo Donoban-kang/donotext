@@ -5,7 +5,6 @@ import { SplitView } from '../layout/SplitView'
 import { allLeaves } from '../layout/tree'
 import { Sidebar } from '../sidebar/Sidebar'
 import { useDocuments } from '../store/documents'
-import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
@@ -14,6 +13,8 @@ import { useDialogs } from '../store/ui'
 import { DropZone } from './DropZone'
 import { FormatMenu } from './FormatMenu'
 import { HelpDialog } from './HelpDialog'
+import { SettingsController } from './SettingsController'
+import { SettingsDialog } from './SettingsDialog'
 import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, ForkCloseDialog, LinkDialog, Toasts } from './Overlays'
 import { Icon } from './icons'
 import { ThemeController } from './ThemeController'
@@ -52,6 +53,7 @@ export function App(): React.ReactElement {
       else if (key === 'n') run(c.newUntitled)
       else if (key === 'w') run(c.closeActiveTab)
       else if (key === '/') run(c.toggleView)
+      else if (e.key === ',') run(() => useDialogs.getState().setSettingsOpen(true))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -61,16 +63,6 @@ export function App(): React.ReactElement {
   const linked = useLayout((s) => s.scrollLink !== null)
   const docCount = useDocuments((s) => Object.keys(s.docs).length)
   const setCompareOpen = useDialogs((s) => s.setCompareOpen)
-  const theme = useSettings((s) => s.theme)
-  const setTheme = useSettings((s) => s.setTheme)
-  const splitSync = useSettings((s) => s.splitSync)
-  const setSplitSync = useSettings((s) => s.setSplitSync)
-  const autoSave = useSettings((s) => s.autoSave)
-  const setAutoSave = useSettings((s) => s.setAutoSave)
-  const focusMode = useSettings((s) => s.focusMode)
-  const setFocusMode = useSettings((s) => s.setFocusMode)
-  const typewriterMode = useSettings((s) => s.typewriterMode)
-  const setTypewriterMode = useSettings((s) => s.setTypewriterMode)
   const recent = useWorkspace((s) => s.recent)
   const c = getCommands()
   return (
@@ -153,32 +145,6 @@ export function App(): React.ReactElement {
             </option>
           ))}
         </select>
-        <label className="dn-toolbar-check">
-          <span className="dn-lbl-inline">{t('theme')}</span>
-          <select
-            className="dn-select"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
-            aria-label={t('theme')}
-          >
-            <option value="system">{t('themeSystem')}</option>
-            <option value="light">{t('themeLight')}</option>
-            <option value="dark">{t('themeDark')}</option>
-          </select>
-        </label>
-        <label className="dn-toggle">
-          <input type="checkbox" checked={focusMode} onChange={(e) => setFocusMode(e.target.checked)} /> <span>{t('focusMode')}</span>
-        </label>
-        <label className="dn-toggle">
-          <input type="checkbox" checked={typewriterMode} onChange={(e) => setTypewriterMode(e.target.checked)} />{' '}
-          <span>{t('typewriterMode')}</span>
-        </label>
-        <label className="dn-toggle" title={t('splitSyncHint')}>
-          <input type="checkbox" checked={splitSync} onChange={(e) => setSplitSync(e.target.checked)} /> <span>{t('splitSync')}</span>
-        </label>
-        <label className="dn-toggle">
-          <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> <span>{t('autoSave')}</span>
-        </label>
       </header>
       <div className="dn-body">
         <Sidebar />
@@ -188,6 +154,7 @@ export function App(): React.ReactElement {
       </div>
       <DropZone />
       <ThemeController />
+      <SettingsController />
       <ScrollLinkController />
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
@@ -195,6 +162,7 @@ export function App(): React.ReactElement {
       <LinkDialog />
       <CompareDialog />
       <HelpDialog />
+      <SettingsDialog />
       <Toasts />
     </div>
   )

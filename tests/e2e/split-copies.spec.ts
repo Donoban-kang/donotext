@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { focusEditorAtEnd, openSeed } from './helpers'
+import { changeSettings, focusEditorAtEnd, openSeed } from './helpers'
 
 const panes = (page: Page) => page.locator('.dn-pane')
 const editorIn = (page: Page, n: number) => panes(page).nth(n).locator('.ProseMirror')
@@ -118,7 +118,7 @@ test('Ctrl+S on a copy asks for a new name and never overwrites the original', a
 
 test('auto-save never writes a copy over the original', async ({ page }) => {
   await splitSameFile(page)
-  await page.getByLabel('자동 저장').check()
+  await changeSettings(page, (d) => d.getByLabel('자동 저장').check())
   await focusEditorAtEnd(page, editorIn(page, 1))
   await page.keyboard.type('abc')
   await page.waitForTimeout(2500)

@@ -15,7 +15,7 @@ export async function startAppServices(): Promise<void> {
   const stores = { documents: useDocuments, layout: useLayout, workspace: useWorkspace }
 
   try {
-    await restoreSession({ api, ...stores, notify: (t) => useToasts.getState().push(t) })
+    await restoreSession({ api, ...stores, notify: (t) => useToasts.getState().push(t), reopen: useSettings.getState().restoreOnStart })
   } catch {
     // A broken session must never keep the app from starting.
   }
@@ -50,7 +50,8 @@ export async function startAppServices(): Promise<void> {
   const saver = createAutoSaver({
     documents: useDocuments,
     save: (id) => getCommands().saveDoc(id),
-    enabled: () => useSettings.getState().autoSave
+    enabled: () => useSettings.getState().autoSave,
+    delayMs: () => useSettings.getState().autoSaveDelay * 1000
   })
   useSettings.subscribe((s, prev) => {
     if (s.autoSave !== prev.autoSave) saver.recheck()

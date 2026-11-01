@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { focusEditorAtEnd } from './helpers'
+import { changeSettings, focusEditorAtEnd } from './helpers'
 
 const session = {
   version: 1 as const,
@@ -64,7 +64,7 @@ test('auto save writes a modified file shortly after the last edit once enabled'
   await boot(page, false)
   await page.evaluate(() => window.__mock!.queueOpen(['/w/a.md']))
   await page.getByRole('button', { name: '열기', exact: true }).click()
-  await page.getByLabel('자동 저장').check()
+  await changeSettings(page, (d) => d.getByLabel('자동 저장').check())
   await focusEditorAtEnd(page)
   await page.keyboard.type(' 자동')
   await expect(page.getByTestId('tab-dirty')).toBeVisible()

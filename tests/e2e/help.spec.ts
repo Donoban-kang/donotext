@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openSeed } from './helpers'
+import { changeSettings, openSeed } from './helpers'
 
 test('help button at the bottom of the sidebar shows version, author and a link to the project', async ({ page }) => {
   await openSeed(page, {})
@@ -53,7 +53,7 @@ test('update check reports up to date, a new version with a download link, and f
 
 test('help dialog fits in dark theme and lists the shortcuts', async ({ page }) => {
   await openSeed(page, {})
-  await page.getByLabel('테마').selectOption('dark')
+  await changeSettings(page, (d) => d.getByLabel('테마').selectOption('dark'))
   await page.getByRole('button', { name: '도움말' }).click()
   const dialog = page.getByRole('dialog', { name: '도움말' })
   await expect(dialog.getByText('Ctrl+Shift+S')).toBeVisible()

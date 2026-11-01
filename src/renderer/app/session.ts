@@ -50,6 +50,8 @@ export function captureSession({ documents, layout, workspace }: SessionStores):
 export interface RestoreDeps extends SessionStores {
   api: DonotextApi
   notify(toast: Toast): void
+  /** False starts with an empty workspace; unsaved edits are still recovered as new documents. Default true. */
+  reopen?: boolean
 }
 
 /** Rebuilds the previous workspace. Returns false when there was nothing usable to restore. */
@@ -62,6 +64,7 @@ export async function restoreSession(deps: RestoreDeps): Promise<boolean> {
     return false
   }
   if (!session) return false
+  if (deps.reopen === false) session = { ...session, docs: [], layout: parseLayout(null), folder: null, activeLeafId: '' }
 
   let backups: Record<string, string> = {}
   try {

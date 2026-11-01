@@ -43,6 +43,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   docIdRef.current = docId
   const focusMode = useSettings((s) => s.focusMode)
   const typewriterMode = useSettings((s) => s.typewriterMode)
+  const spellcheck = useSettings((s) => s.spellcheck)
   const composing = useRef(false)
   const pendingRemote = useRef<string | null>(null)
   const compositionBase = useRef('')
@@ -99,7 +100,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
       })
     },
     editorProps: {
-      attributes: { class: 'dn-wysiwyg', 'data-testid': `wysiwyg-${paneId}` },
+      attributes: { class: 'dn-wysiwyg', 'data-testid': `wysiwyg-${paneId}`, spellcheck: String(useSettings.getState().spellcheck) },
       handlePaste: (_view, event) => {
         const images = Array.from(event.clipboardData?.files ?? []).filter((f) => imageExtFromMime(f.type) !== null)
         if (images.length === 0) return false
@@ -213,6 +214,10 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   }
 
   useEffect(() => registerEditor(paneId, { run: (id) => runFormat.current(id) }), [paneId])
+
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dom.setAttribute('spellcheck', String(spellcheck))
+  }, [editor, spellcheck])
 
   useEffect(() => {
     if (!editor) return

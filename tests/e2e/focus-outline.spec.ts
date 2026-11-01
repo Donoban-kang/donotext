@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openSeed } from './helpers'
+import { changeSettings, openSeed } from './helpers'
 
 test('typing in the editor does not draw an input-style box around the page', async ({ page }) => {
   await openSeed(page, {})
@@ -23,7 +23,7 @@ test('source editor shows no focus box either', async ({ page }) => {
 
 test('focus mode: selecting text or special blocks never draws a focus frame inside the editor', async ({ page }) => {
   await openSeed(page, { '/w/a.md': '---\ntitle: x\n---\n\n# 제목\n\n문단 $a^2$ 입니다.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [ ] 할 일\n\n끝 문단\n' }, ['/w/a.md'])
-  await page.getByLabel('집중 모드').check()
+  await changeSettings(page, (d) => d.getByLabel('집중 모드').check())
   const framed = (): Promise<string[]> =>
     page.evaluate(() =>
       [...document.querySelectorAll('.dn-editor-wrap, .dn-editor-wrap *')]

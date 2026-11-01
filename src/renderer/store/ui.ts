@@ -12,6 +12,8 @@ interface DialogState {
   setCompareOpen(open: boolean): void
   helpOpen: boolean
   setHelpOpen(open: boolean): void
+  settingsOpen: boolean
+  setSettingsOpen(open: boolean): void
   unsaved: { name: string; resolve: (c: UnsavedChoice) => void } | null
   confirm: (ConfirmOptions & { resolve: (ok: boolean) => void }) | null
   ask(name: string): Promise<UnsavedChoice>
@@ -31,6 +33,8 @@ export const useDialogs = create<DialogState>()((set, get) => ({
   setCompareOpen: (open) => set({ compareOpen: open }),
   helpOpen: false,
   setHelpOpen: (open) => set({ helpOpen: open }),
+  settingsOpen: false,
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
   unsaved: null,
   confirm: null,
   linkAsk: null,

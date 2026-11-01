@@ -8,6 +8,7 @@ import { Outline } from './OutlinePanel'
 
 export function Sidebar(): React.ReactElement {
   const setHelpOpen = useDialogs((s) => s.setHelpOpen)
+  const setSettingsOpen = useDialogs((s) => s.setSettingsOpen)
   const [tab, setTab] = useState<'files' | 'outline'>('files')
   return (
     <aside className="dn-sidebar" data-testid="sidebar">
@@ -29,6 +30,10 @@ export function Sidebar(): React.ReactElement {
         </div>
       </div>
       <div className="dn-sidebar-footer">
+        <button className="dn-help-btn" title="Ctrl+," onClick={() => setSettingsOpen(true)}>
+          <Icon name="settings" />
+          <span>{t('settings')}</span>
+        </button>
         <button className="dn-help-btn" onClick={() => setHelpOpen(true)}>
           <Icon name="help" />
           <span>{t('help')}</span>

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { focusEditorAtEnd, openSeed } from './helpers'
+import { changeSettings, focusEditorAtEnd, openSeed } from './helpers'
 
 const storeText = (page: Page): Promise<string> =>
   page.evaluate(() => {
@@ -68,7 +68,7 @@ test('focus mode dims every block except the one with the caret', async ({ page 
   await openSeed(page, { '/w/f.md': '첫째 단락\n\n둘째 단락\n\n셋째 단락\n' }, ['/w/f.md'])
   const opacity = (n: number) => page.locator('.ProseMirror > p').nth(n).evaluate((el) => Number(getComputedStyle(el).opacity))
   expect(await opacity(0)).toBe(1) // mode is off by default
-  await page.getByLabel('집중 모드').check()
+  await changeSettings(page, (d) => d.getByLabel('집중 모드').check())
   await page.locator('.ProseMirror > p').nth(1).click()
   await expect.poll(() => opacity(1)).toBe(1)
   await expect.poll(() => opacity(0)).toBeLessThan(0.6)
@@ -76,14 +76,14 @@ test('focus mode dims every block except the one with the caret', async ({ page 
   await page.locator('.ProseMirror > p').nth(2).click()
   await expect.poll(() => opacity(2)).toBe(1)
   await expect.poll(() => opacity(1)).toBeLessThan(0.6)
-  await page.getByLabel('집중 모드').uncheck()
+  await changeSettings(page, (d) => d.getByLabel('집중 모드').uncheck())
   await expect.poll(() => opacity(0)).toBe(1)
 })
 
 test('typewriter mode keeps the caret line near the vertical centre of the editor', async ({ page }) => {
   const long = Array.from({ length: 80 }, (_, i) => `줄 ${i}\n`).join('\n')
   await openSeed(page, { '/w/t.md': long }, ['/w/t.md'])
-  await page.getByLabel('타자기 모드').check()
+  await changeSettings(page, (d) => d.getByLabel('타자기 모드').check())
   await focusEditorAtEnd(page)
   await page.keyboard.type('입력 중')
   const offset = await page.evaluate(() => {

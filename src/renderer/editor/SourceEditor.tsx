@@ -3,9 +3,10 @@ import { useEffect, useRef } from 'react'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { search, searchKeymap } from '@codemirror/search'
-import { EditorState, Prec } from '@codemirror/state'
+import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { drawSelection, EditorView, keymap } from '@codemirror/view'
 import { useDocuments } from '../store/documents'
+import { useSettings } from '../store/settings'
 import { createDocBinding } from './docBinding'
 import { FORMAT_KEYS, registerEditor } from './format'
 import { runSourceFormat } from './sourceActions'
@@ -26,6 +27,12 @@ export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactE
     const doc = useDocuments.getState().docs[docId]
     if (!doc || !host.current) return
     const binding = createDocBinding(docId, paneId)
+    // Wrapping and spell-checking follow the settings while the editor stays open.
+    const wrap = new Compartment()
+    const spell = new Compartment()
+    const wrapExt = (on: boolean) => (on ? EditorView.lineWrapping : [])
+    const spellExt = (on: boolean) => EditorView.contentAttributes.of({ spellcheck: String(on) })
+    const initial = useSettings.getState()
     let view: EditorView
     const handle = { run: (id: Parameters<typeof runSourceFormat>[1]) => void runSourceFormat(view, id, () => docIdRef.current) }
     view = new EditorView({
@@ -50,7 +57,8 @@ export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactE
           search({ top: true }),
           keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
           markdown(),
-          EditorView.lineWrapping,
+          wrap.of(wrapExt(initial.wordWrap)),
+          spell.of(spellExt(initial.spellcheck)),
           EditorState.readOnly.of(doc.readOnly),
           EditorView.editable.of(!doc.readOnly),
           EditorView.contentAttributes.of({ 'data-testid': `source-${paneId}` }),
@@ -60,7 +68,12 @@ export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactE
     })
     binding.attach(view)
     const unregister = registerEditor(paneId, handle)
+    const offSettings = useSettings.subscribe((s, prev) => {
+      if (s.wordWrap !== prev.wordWrap) view.dispatch({ effects: wrap.reconfigure(wrapExt(s.wordWrap)) })
+      if (s.spellcheck !== prev.spellcheck) view.dispatch({ effects: spell.reconfigure(spellExt(s.spellcheck)) })
+    })
     return () => {
+      offSettings()
       unregister()
       binding.detach()
       view.destroy()

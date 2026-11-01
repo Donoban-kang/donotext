@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { changeSettings, openSettings } from './helpers'
 
 const theme = (page: Page): Promise<string | undefined> => page.evaluate(() => document.documentElement.dataset.theme)
 const bgLuminance = (page: Page): Promise<number> =>
@@ -19,10 +20,10 @@ test('an explicit choice overrides the system and changes the actual colours', a
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
   expect(await bgLuminance(page)).toBeGreaterThan(0.9)
-  await page.getByLabel('테마').selectOption('dark')
+  await changeSettings(page, (d) => d.getByLabel('테마').selectOption('dark'))
   await expect.poll(() => theme(page)).toBe('dark')
   expect(await bgLuminance(page)).toBeLessThan(0.3)
-  await page.getByLabel('테마').selectOption('light')
+  await changeSettings(page, (d) => d.getByLabel('테마').selectOption('light'))
   await expect.poll(() => theme(page)).toBe('light')
   expect(await bgLuminance(page)).toBeGreaterThan(0.9)
 })
@@ -30,19 +31,22 @@ test('an explicit choice overrides the system and changes the actual colours', a
 test('the choice survives a reload', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
-  await page.getByLabel('테마').selectOption('dark')
+  await changeSettings(page, (d) => d.getByLabel('테마').selectOption('dark'))
   await page.reload()
   await expect.poll(() => theme(page)).toBe('dark')
-  await expect(page.getByLabel('테마')).toHaveValue('dark')
+  await expect((await openSettings(page)).getByLabel('테마')).toHaveValue('dark')
 })
 
 test('other settings survive a reload too', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('자동 저장').check()
-  await page.getByLabel('집중 모드').check()
+  await changeSettings(page, async (d) => {
+    await d.getByLabel('자동 저장').check()
+    await d.getByLabel('집중 모드').check()
+  })
   await page.reload()
-  await expect(page.getByLabel('자동 저장')).toBeChecked()
-  await expect(page.getByLabel('집중 모드')).toBeChecked()
+  const dialog = await openSettings(page)
+  await expect(dialog.getByLabel('자동 저장')).toBeChecked()
+  await expect(dialog.getByLabel('집중 모드')).toBeChecked()
 })
 
 test('editor surfaces follow the theme (source editor is dark in dark mode)', async ({ page }) => {
@@ -50,7 +54,7 @@ test('editor surfaces follow the theme (source editor is dark in dark mode)', as
     window.__DONOTEXT_SEED__ = { '/w/a.md': '# 제목\n' }
   })
   await page.goto('/')
-  await page.getByLabel('테마').selectOption('dark')
+  await changeSettings(page, (d) => d.getByLabel('테마').selectOption('dark'))
   await page.evaluate(() => window.__mock!.queueOpen(['/w/a.md']))
   await page.getByRole('button', { name: '열기', exact: true }).click()
   await page.getByRole('button', { name: '소스 모드' }).click()

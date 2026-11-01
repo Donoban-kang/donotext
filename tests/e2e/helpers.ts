@@ -24,7 +24,23 @@ export async function openSeed(page: Page, seed: Record<string, string>, open: s
   }
 }
 
+/** Opens the 설정 window from the sidebar and returns it. */
+export async function openSettings(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '설정' })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+
+/** Opens 설정, runs `change` inside it, and closes it again (changes apply immediately). */
+export async function changeSettings(page: Page, change: (dialog: Locator) => Promise<unknown>): Promise<void> {
+  const dialog = await openSettings(page)
+  await change(dialog)
+  await dialog.getByRole('button', { name: '닫기' }).click()
+  await expect(dialog).toHaveCount(0)
+}
+
 /** Turns on "분할 창 동기화": split panes of one file edit the same text, as they did before edited copies existed. */
 export async function enableSplitSync(page: Page): Promise<void> {
-  await page.getByLabel('분할 창 동기화').check()
+  await changeSettings(page, (d) => d.getByLabel('분할 창 동기화').check())
 }
