@@ -1,9 +1,11 @@
 import type React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t } from '../app/i18n'
 import { getCommands } from '../app/appCommands'
 import { Icon } from '../app/icons'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
+import { TabStats, type StatsAnchor } from './TabStats'
 import type { Leaf, Tab } from './tree'
 
 export const TAB_DRAG_TYPE = 'application/x-donotext-tab'
@@ -29,8 +31,19 @@ function TabLabel({ tab }: { tab: Tab }): React.ReactElement {
 
 export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
   const activate = useLayout((s) => s.activateTab)
+  const [stats, setStats] = useState<StatsAnchor | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cancel = (): void => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+  }
+  const hide = (): void => {
+    cancel()
+    setStats(null)
+  }
+  useEffect(() => cancel, [])
   return (
-    <div className="dn-tabbar" role="tablist">
+    <div className="dn-tabbar" role="tablist" onScroll={hide}>
       {leaf.tabs.map((tab, i) => (
         <div
           key={tab.kind === 'doc' ? tab.docId : `${tab.leftDocId}:${tab.rightDocId}`}
@@ -39,12 +52,22 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
           aria-selected={i === leaf.active}
           data-tab-index={i}
           draggable
+          onMouseEnter={(e) => {
+            if (tab.kind !== 'doc') return
+            const rect = e.currentTarget.getBoundingClientRect()
+            const next: StatsAnchor = { docId: tab.docId, left: rect.left, top: rect.bottom + 6 }
+            cancel()
+            timer.current = setTimeout(() => setStats(next), 350)
+          }}
+          onMouseLeave={hide}
           onDragStart={(e) => {
+            hide()
             e.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ leafId: leaf.id, index: i }))
             e.dataTransfer.effectAllowed = 'move'
           }}
           className={'dn-tab' + (i === leaf.active ? ' active' : '')}
           onMouseDown={(e) => {
+            hide()
             if (e.button === 1) {
               e.preventDefault()
               void getCommands().closeTab(leaf.id, i)
@@ -64,6 +87,7 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
           </button>
         </div>
       ))}
+      {stats && <TabStats anchor={stats} />}
     </div>
   )
 }
