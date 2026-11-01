@@ -130,8 +130,13 @@ export function App(): React.ReactElement {
           <span className="dn-lbl">{t('exportPdf')}</span>
         </button>
         <span className="dn-grow" />
-        <button className="dn-chip" disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
-          {activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}
+        <button className="dn-chip dn-chip-mode" disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
+          {/* Both labels are laid out (one hidden) so the button keeps the same width in either mode and nothing next to it moves. */}
+          <span className="dn-chip-sizer" aria-hidden="true">
+            <span>{t('sourceMode')}</span>
+            <span>{t('wysiwygMode')}</span>
+          </span>
+          <span className="dn-chip-text">{activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}</span>
         </button>
         <select
           className="dn-select"

@@ -191,3 +191,9 @@ body {
 .dn-format-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dn-format-item kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--dn-sub); }
 .dn-menu-sep { height: 1px; margin: 4px 6px; background: var(--dn-line); }
+
+/* The mode button is as wide as its longer label in both states, so toggling never shifts the toolbar. */
+.dn-chip-mode { display: inline-grid; place-items: center; white-space: nowrap; }
+.dn-chip-mode > * { grid-area: 1 / 1; }
+.dn-chip-sizer { display: grid; visibility: hidden; height: 0; overflow: hidden; }
+.dn-chip-sizer > * { grid-area: 1 / 1; }
