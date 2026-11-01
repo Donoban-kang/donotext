@@ -17,6 +17,9 @@ import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
 import { commitEdit } from './editRouter'
 import { merge3 } from './merge3'
+import { FormatKeys } from './formatKeys'
+import { askLinkUrl, pickImageFiles } from './formatDialogs'
+import { registerEditor, type FormatId } from './format'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
 import 'katex/dist/katex.min.css'
 import './editor.css'
@@ -48,6 +51,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   const debouncer = useRef(createDebouncer(EDIT_DEBOUNCE_MS))
   const [findMode, setFindMode] = useState<'find' | 'replace' | null>(null)
   const editorRef = useRef<Editor | null>(null)
+  const runFormat = useRef<(id: FormatId) => void>(() => undefined)
 
   const insertImages = async (files: File[]): Promise<void> => {
     const doc = useDocuments.getState().docs[docIdRef.current]
@@ -75,6 +79,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
           : ext
       ),
       SearchReplace.configure({ onOpen: (m) => setFindMode(m) }),
+      FormatKeys.configure({ onRun: (id) => runFormat.current(id) }),
       FocusMode
     ],
     content: toContent(useDocuments.getState().docs[docId]?.text ?? ''),
@@ -119,6 +124,58 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
 
   editorRef.current = editor
 
+  runFormat.current = (id) => {
+    const ed = editorRef.current
+    if (!ed || ed.isDestroyed) return
+    const chain = () => ed.chain().focus()
+    switch (id) {
+      case 'bold':
+        chain().toggleBold().run()
+        break
+      case 'italic':
+        chain().toggleItalic().run()
+        break
+      case 'underline':
+        chain().toggleUnderline().run()
+        break
+      case 'strike':
+        chain().toggleStrike().run()
+        break
+      case 'code':
+        chain().toggleCode().run()
+        break
+      case 'superscript':
+      case 'subscript':
+      case 'highlight':
+        chain().toggleMark(id).run()
+        break
+      case 'math': {
+        const { from, to } = ed.state.selection
+        const latex = ed.state.doc.textBetween(from, to, ' ')
+        chain().insertContentAt({ from, to }, { type: 'mathInline', attrs: { latex } }).run()
+        break
+      }
+      case 'link':
+        void (async () => {
+          const url = await askLinkUrl(String(ed.getAttributes('link').href ?? ''))
+          if (url === null) return ed.commands.focus()
+          if (url === '') return void chain().extendMarkRange('link').unsetLink().run()
+          if (ed.state.selection.empty && !ed.isActive('link')) {
+            chain().insertContent({ type: 'text', text: url, marks: [{ type: 'link', attrs: { href: url } }] }).run()
+          } else {
+            chain().extendMarkRange('link').setLink({ href: url }).run()
+          }
+        })()
+        break
+      case 'image':
+        void pickImageFiles().then((files) => (files.length > 0 ? insertImages(files) : undefined))
+        break
+      case 'clear':
+        chain().unsetAllMarks().run()
+        break
+    }
+  }
+
   /**
    * After a Hangul/IME composition: other panes may have changed the document meanwhile. Merge their
    * changes with what was just composed instead of overwriting either side.
@@ -154,6 +211,8 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
       suppress.current = false
     }
   }
+
+  useEffect(() => registerEditor(paneId, { run: (id) => runFormat.current(id) }), [paneId])
 
   useEffect(() => {
     if (!editor) return

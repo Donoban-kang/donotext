@@ -39,6 +39,50 @@ export function ConfirmUnsavedDialog(): React.ReactElement | null {
   )
 }
 
+export function LinkDialog(): React.ReactElement | null {
+  const state = useDialogs((s) => s.linkAsk)
+  const answer = useDialogs((s) => s.answerLink)
+  const [url, setUrl] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!state) return
+    setUrl(state.initial)
+    input.current?.focus()
+    input.current?.select()
+  }, [state])
+  if (!state) return null
+  return (
+    <div className="dn-modal-backdrop">
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dn-link-title"
+        className="dn-modal"
+        onSubmit={(e) => {
+          e.preventDefault()
+          answer(url.trim())
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') answer(null)
+        }}
+      >
+        <h2 id="dn-link-title">{t('linkDialogTitle')}</h2>
+        <label className="dn-compare-pick">
+          {t('linkUrlLabel')}
+          <input ref={input} type="text" className="dn-text-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" />
+        </label>
+        <p className="dn-help-note">{t('linkUrlHint')}</p>
+        <div className="dn-modal-actions">
+          <button type="submit">{t('confirm')}</button>
+          <button type="button" onClick={() => answer(null)}>
+            {t('cancel')}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export function ForkCloseDialog(): React.ReactElement | null {
   const state = useDialogs((s) => s.forkClose)
   const answer = useDialogs((s) => s.answerForkClose)

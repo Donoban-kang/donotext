@@ -17,6 +17,9 @@ interface DialogState {
   ask(name: string): Promise<UnsavedChoice>
   answer(choice: UnsavedChoice): void
   askConfirm(opts: ConfirmOptions): Promise<boolean>
+  linkAsk: { initial: string; resolve: (url: string | null) => void } | null
+  askLink(initial: string): Promise<string | null>
+  answerLink(url: string | null): void
   forkClose: { name: string; canReplace: boolean; resolve: (c: ForkChoice) => void } | null
   askForkClose(name: string, canReplace: boolean): Promise<ForkChoice>
   answerForkClose(choice: ForkChoice): void
@@ -30,6 +33,16 @@ export const useDialogs = create<DialogState>()((set, get) => ({
   setHelpOpen: (open) => set({ helpOpen: open }),
   unsaved: null,
   confirm: null,
+  linkAsk: null,
+  askLink(initial) {
+    get().linkAsk?.resolve(null)
+    return new Promise<string | null>((resolve) => set({ linkAsk: { initial, resolve } }))
+  },
+  answerLink(url) {
+    const cur = get().linkAsk
+    set({ linkAsk: null })
+    cur?.resolve(url)
+  },
   forkClose: null,
   askForkClose(name, canReplace) {
     get().forkClose?.resolve('cancel')

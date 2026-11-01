@@ -179,3 +179,15 @@ body {
 .dn-menu-item { display: block; width: 100%; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--dn-text); font: inherit; text-align: left; cursor: pointer; }
 .dn-menu-item:hover, .dn-menu-item:focus-visible { background: var(--dn-hover); outline: none; }
 .dn-menu-danger { color: var(--dn-danger); }
+
+.dn-text-input { height: 36px; padding: 0 10px; border: 1px solid var(--dn-line); border-radius: 8px; background: var(--dn-surface); color: var(--dn-text); font: inherit; font-size: 14px; }
+.dn-text-input:focus-visible { outline: 2px solid var(--dn-accent); outline-offset: 0; }
+
+/* ---------- 서식 menu ---------- */
+.dn-btn-text { gap: 2px; padding: 0 8px 0 10px; font-size: 13px; color: var(--dn-text); }
+.dn-caret { display: inline-flex; transform: rotate(90deg); color: var(--dn-sub); }
+.dn-caret .dn-icon { width: 12px; height: 12px; }
+.dn-format-menu { width: 260px; }
+.dn-format-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dn-format-item kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--dn-sub); }
+.dn-menu-sep { height: 1px; margin: 4px 6px; background: var(--dn-line); }

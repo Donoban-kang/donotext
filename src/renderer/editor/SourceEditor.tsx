@@ -3,10 +3,12 @@ import { useEffect, useRef } from 'react'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { search, searchKeymap } from '@codemirror/search'
-import { EditorState } from '@codemirror/state'
+import { EditorState, Prec } from '@codemirror/state'
 import { drawSelection, EditorView, keymap } from '@codemirror/view'
 import { useDocuments } from '../store/documents'
 import { createDocBinding } from './docBinding'
+import { FORMAT_KEYS, registerEditor } from './format'
+import { runSourceFormat } from './sourceActions'
 import './editor.css'
 
 export interface SourceEditorProps {
@@ -16,16 +18,33 @@ export interface SourceEditorProps {
 
 export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactElement {
   const host = useRef<HTMLDivElement>(null)
+  // The pane can be switched to an edited copy while typing; image saving must use the current document.
+  const docIdRef = useRef(docId)
+  docIdRef.current = docId
 
   useEffect(() => {
     const doc = useDocuments.getState().docs[docId]
     if (!doc || !host.current) return
     const binding = createDocBinding(docId, paneId)
-    const view = new EditorView({
+    let view: EditorView
+    const handle = { run: (id: Parameters<typeof runSourceFormat>[1]) => void runSourceFormat(view, id, () => docIdRef.current) }
+    view = new EditorView({
       parent: host.current,
       state: EditorState.create({
         doc: doc.text,
         extensions: [
+          Prec.high(
+            keymap.of(
+              FORMAT_KEYS.map(({ key, id }) => ({
+                key,
+                preventDefault: true,
+                run: () => {
+                  handle.run(id)
+                  return true
+                }
+              }))
+            )
+          ),
           history(),
           drawSelection(),
           search({ top: true }),
@@ -40,7 +59,9 @@ export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactE
       })
     })
     binding.attach(view)
+    const unregister = registerEditor(paneId, handle)
     return () => {
+      unregister()
       binding.detach()
       view.destroy()
     }

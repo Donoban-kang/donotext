@@ -10,6 +10,7 @@ import { common, createLowlight } from 'lowlight'
 import { isSafeLinkUrl } from '../../../shared/links'
 import { FrontMatter } from './frontMatterNode'
 import { markdownDestination } from './markdownText'
+import { inlineMarks } from './inlineMarks'
 import { MathBlock, MathInline } from './math'
 import { RawMarkdownBlock, RawMarkdownInline } from './rawMarkdown'
 import { RawHtmlBlock, RawHtmlInline } from './rawHtml'
@@ -74,6 +75,7 @@ export function getExtensions(): Extensions {
     RawMarkdownInline,
     FrontMatter,
     MathInline,
-    MathBlock
+    MathBlock,
+    ...inlineMarks
   ]
 }

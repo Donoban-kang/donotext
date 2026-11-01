@@ -11,8 +11,9 @@ import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
+import { FormatMenu } from './FormatMenu'
 import { HelpDialog } from './HelpDialog'
-import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, ForkCloseDialog, Toasts } from './Overlays'
+import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, ForkCloseDialog, LinkDialog, Toasts } from './Overlays'
 import { Icon } from './icons'
 import { ThemeController } from './ThemeController'
 import './app.css'
@@ -91,6 +92,7 @@ export function App(): React.ReactElement {
           <Icon name="saveAs" />
           <span className="dn-lbl">{t('saveAs')}</span>
         </button>
+        <FormatMenu disabled={!activeView} />
         <span className="dn-toolbar-sep" />
         <button className="dn-btn" title={t('splitRight')} onClick={() => c.splitActive('row')}>
           <Icon name="splitRight" />
@@ -183,6 +185,7 @@ export function App(): React.ReactElement {
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
       <ForkCloseDialog />
+      <LinkDialog />
       <CompareDialog />
       <HelpDialog />
       <Toasts />

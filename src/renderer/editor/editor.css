@@ -39,3 +39,6 @@ textarea.dn-math-input { min-height: 4.5em; }
 .dn-typewriter .dn-wysiwyg { padding-bottom: 50vh; }
 .dn-blocked-image { opacity: .6; border: 1px dashed currentColor; border-radius: 6px; padding: 0 6px; font-size: .9em; }
 .dn-wysiwyg th p, .dn-wysiwyg td p { margin: 0; }
+
+.dn-wysiwyg mark { background: var(--dn-mark); color: inherit; border-radius: 3px; padding: 0 2px; }
+.dn-wysiwyg sup, .dn-wysiwyg sub { line-height: 0; }
