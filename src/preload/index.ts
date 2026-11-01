@@ -28,6 +28,8 @@ const api: DonotextApi = {
   exportPdf: (html, name, docPath) => ipcRenderer.invoke(IPC.exportPdf, html, name, docPath),
   saveImage: (docPath, bytes, ext) => ipcRenderer.invoke(IPC.saveImage, docPath, bytes, ext),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
+  getAppInfo: () => ipcRenderer.invoke(IPC.getAppInfo),
+  checkForUpdate: () => ipcRenderer.invoke(IPC.checkUpdate),
   onCloseRequested: (cb) => {
     const listener = (): void => cb()
     ipcRenderer.on(IPC.requestClose, listener)

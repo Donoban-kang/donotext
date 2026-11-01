@@ -88,7 +88,31 @@ export const ko = {
   externalChanged: '디스크에서 파일이 변경되었습니다.',
   externalDeleted: '파일이 삭제되었거나 이동되었습니다. 저장하면 같은 경로에 다시 만듭니다.',
   reload: '다시 불러오기',
-  keepMine: '내 내용 유지'
+  keepMine: '내 내용 유지',
+  help: '도움말',
+  helpAbout: '프로그램 정보',
+  helpVersion: '버전',
+  helpAuthor: '만든이',
+  helpProject: '프로젝트 페이지',
+  helpOpenProject: 'GitHub에서 보기',
+  helpUpdate: '업데이트',
+  helpCheckUpdate: '업데이트 확인',
+  helpChecking: '확인하는 중…',
+  helpUpToDate: '최신 버전입니다. (v{version})',
+  helpNewVersion: '새 버전 v{latest}이 나왔어요. 지금은 v{current}를 쓰고 있어요.',
+  helpDownload: '내려받기',
+  helpErrNetwork: '인터넷에 연결되지 않아 확인하지 못했어요.',
+  helpErrHttp: 'GitHub에서 정보를 받지 못했어요. 잠시 뒤에 다시 눌러 주세요.',
+  helpErrNotFound: '공개된 릴리스를 찾지 못했어요. 저장소가 비공개이면 앱에서는 확인할 수 없어요. 릴리스 페이지에서 직접 확인해 주세요.',
+  helpOpenReleases: '릴리스 페이지 열기',
+  helpErrBad: '받아온 정보를 읽지 못했어요.',
+  helpPrivacy: '버튼을 누를 때만 GitHub에 최신 버전을 물어봐요. 문서 내용은 어디로도 보내지 않아요.',
+  helpShortcuts: '단축키',
+  helpToggleView: '소스 모드 ↔ WYSIWYG 전환',
+  helpPrevPane: '이전 창으로 이동',
+  helpNextPane: '다음 창으로 이동',
+  helpMacNote: 'macOS에서는 Ctrl 대신 ⌘ 키를 쓰세요.',
+  helpOpenFailed: '링크를 열지 못했습니다: {reason}'
 } as const
 
 export type MessageKey = keyof typeof ko

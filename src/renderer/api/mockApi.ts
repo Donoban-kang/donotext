@@ -1,3 +1,4 @@
+import type { UpdateResult } from '../../shared/appInfo'
 import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, ReadResult } from '../../shared/fsTypes'
 import { IMAGE_EXTENSIONS, type DonotextApi, type FileChange } from '../../shared/ipc'
@@ -24,6 +25,10 @@ export interface MockController {
   queueInitialOpenPaths(paths: string[]): void
   /** Answers the renderer gave to close requests, in order. */
   closeResponses: boolean[]
+  /** What the next "check for updates" will report. */
+  setUpdateResult(r: UpdateResult): void
+  /** URLs the app asked to open in the browser, in order. */
+  externalUrls: string[]
 }
 
 function parentOf(path: string): string {
@@ -54,6 +59,8 @@ export function createMockApi(
   const openPathListeners = new Set<(paths: string[]) => void>()
   const closeResponses: boolean[] = []
   let initialOpenPaths: string[] = [...(initial.openPaths ?? [])]
+  let nextUpdate: UpdateResult = { status: 'latest', current: '0.0.0-dev', latest: '0.0.0-dev' }
+  const externalUrls: string[] = []
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
 
@@ -189,6 +196,12 @@ export function createMockApi(
       initialOpenPaths = []
       return out
     },
+    async getAppInfo() {
+      return { name: 'donotext', version: '0.0.0-dev', author: 'Donoban-kang', repoUrl: 'https://github.com/Donoban-kang/donotext', releasesUrl: 'https://github.com/Donoban-kang/donotext/releases' }
+    },
+    async checkForUpdate() {
+      return nextUpdate
+    },
     async openExternal(url) {
       let u: URL
       try {
@@ -197,6 +210,7 @@ export function createMockApi(
         throw new Error('Invalid URL')
       }
       if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Blocked URL scheme')
+      externalUrls.push(u.toString())
     }
   }
 
@@ -210,6 +224,10 @@ export function createMockApi(
     closeResponses,
     requestClose: () => closeListeners.forEach((l) => l()),
     pushOpenPaths: (paths) => openPathListeners.forEach((l) => l(paths)),
+    setUpdateResult: (r) => {
+      nextUpdate = r
+    },
+    externalUrls,
     queueInitialOpenPaths: (paths) => {
       initialOpenPaths = paths
     }

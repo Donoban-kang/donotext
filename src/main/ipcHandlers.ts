@@ -1,10 +1,12 @@
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
+import { APP_NAME, AUTHOR, RELEASES_URL, REPO_URL, type AppInfo } from '../shared/appInfo'
 import { MARKDOWN_EXTENSIONS } from '../shared/fileKind'
 import { IPC } from '../shared/ipc'
 import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
 import type { ImageService } from './services/imageService'
 import type { SessionService } from './services/sessionService'
+import { checkForUpdate, type FetchLike } from './services/updateService'
 import type { WatchService } from './services/watchService'
 
 const MAX_PATH = 4096
@@ -75,6 +77,9 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
     if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Blocked URL scheme')
     await shell.openExternal(u.toString())
   })
+
+  ipcMain.handle(IPC.getAppInfo, (): AppInfo => ({ name: APP_NAME, version: app.getVersion(), author: AUTHOR, repoUrl: REPO_URL, releasesUrl: RELEASES_URL }))
+  ipcMain.handle(IPC.checkUpdate, () => checkForUpdate(app.getVersion(), net.fetch as unknown as FetchLike))
 
   ipcMain.on(IPC.watch, (_e, paths: unknown) => {
     if (!Array.isArray(paths) || paths.length > 200) return

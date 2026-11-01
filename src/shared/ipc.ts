@@ -1,3 +1,4 @@
+import type { AppInfo, UpdateResult } from './appInfo'
 import type { DirEntry, ReadResult } from './fsTypes'
 import type { SessionData } from './session'
 import type { Eol } from './textFormat'
@@ -30,6 +31,8 @@ export const IPC = {
   exportPdf: 'export:pdf',
   saveImage: 'image:save',
   openExternal: 'app:openExternal',
+  getAppInfo: 'app:info',
+  checkUpdate: 'app:checkUpdate',
   requestClose: 'app:requestClose',
   closeResponse: 'app:closeResponse',
   openPaths: 'app:openPaths',
@@ -58,6 +61,9 @@ export interface DonotextApi {
   exportPdf(html: string, suggestedName: string, docPath: string | null): Promise<string | null>
   saveImage(docPath: string | null, bytes: Uint8Array, ext: string): Promise<string>
   openExternal(url: string): Promise<void>
+  getAppInfo(): Promise<AppInfo>
+  /** One plain GET to GitHub's latest-release API; never sends document content. */
+  checkForUpdate(): Promise<UpdateResult>
   /** The window is about to close; answer with respondToClose(true) to allow it. */
   onCloseRequested(cb: () => void): () => void
   respondToClose(canClose: boolean): void

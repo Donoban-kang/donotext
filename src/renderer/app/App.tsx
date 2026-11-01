@@ -11,6 +11,7 @@ import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
+import { HelpDialog } from './HelpDialog'
 import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
 import { Icon } from './icons'
 import { ThemeController } from './ThemeController'
@@ -177,6 +178,7 @@ export function App(): React.ReactElement {
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
       <CompareDialog />
+      <HelpDialog />
       <Toasts />
     </div>
   )
