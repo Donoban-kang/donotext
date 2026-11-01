@@ -41,6 +41,22 @@ npm run dist         # 현재 OS용 설치 파일
 
 Windows(NSIS)·macOS(dmg)·Linux(AppImage) 설정은 `electron-builder.yml`에 있습니다. **이 저장소의 자동 검증은 Linux 폴더 패키지까지만 했습니다.** Windows/macOS 설치 파일, 코드 서명, 앱 아이콘은 해당 OS에서 따로 확인해야 합니다.
 
+## 자동 빌드 (GitHub Actions)
+
+- **CI** (`.github/workflows/ci.yml`): 모든 push와 Pull Request에서 타입 검사, i18n 점검, 단위 테스트, 빌드, 브라우저 E2E를 실행합니다.
+- **릴리스** (`.github/workflows/release.yml`): Windows·macOS·Linux 설치 파일을 각 운영체제 러너에서 만듭니다.
+  - `v0.1.0`처럼 `v`로 시작하는 태그를 푸시하면 빌드 후 **초안(draft) 릴리스**에 설치 파일이 첨부됩니다. 내용을 확인하고 GitHub에서 직접 게시하세요. 태그는 `package.json`의 `version`과 같아야 합니다(`v` 제외).
+  - Actions 탭에서 **Release → Run workflow**로 수동 실행하면, 릴리스는 만들지 않고 설치 파일을 14일간 내려받을 수 있는 아티팩트로만 남깁니다.
+
+```bash
+# 예: 0.1.0 릴리스
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+산출물 이름: `donotext-<버전>-<os>-<arch>.<확장자>` (예: `donotext-0.1.0-linux-x86_64.AppImage`).
+코드 서명 인증서가 없어 **서명되지 않은 설치 파일**이 만들어집니다. Windows(SmartScreen)와 macOS(Gatekeeper)에서 "확인되지 않은 개발자" 경고가 뜰 수 있습니다. AppImage는 `chmod +x` 후 실행하고, 일부 Linux에서는 `--no-sandbox` 옵션이 필요할 수 있습니다.
+
 ## 단축키
 
 | 동작 | 키 (macOS는 Ctrl 대신 Cmd) |

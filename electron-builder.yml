@@ -1,6 +1,7 @@
 appId: com.donotext.app
 productName: donotext
 copyright: Copyright (c) donotext
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
   output: release
   buildResources: build
