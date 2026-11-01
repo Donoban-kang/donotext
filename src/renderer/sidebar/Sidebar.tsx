@@ -2,7 +2,7 @@ import type React from 'react'
 import { useState } from 'react'
 import { t } from '../app/i18n'
 import { FileTree } from './FileTree'
-import { Outline } from './Outline'
+import { Outline } from './OutlinePanel'
 
 export function Sidebar(): React.ReactElement {
   const [tab, setTab] = useState<'files' | 'outline'>('files')
