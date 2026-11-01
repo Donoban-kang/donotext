@@ -1,6 +1,7 @@
 import type React from 'react'
 import { t } from '../app/i18n'
 import { getCommands } from '../app/appCommands'
+import { Icon } from '../app/icons'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import type { Leaf, Tab } from './tree'
@@ -16,9 +17,7 @@ function TabLabel({ tab }: { tab: Tab }): React.ReactElement {
       <>
         <span className="dn-tab-name">{d?.name ?? '?'}</span>
         {d && dirty(d.id) && (
-          <span data-testid="tab-dirty" className="dn-tab-dirty" title={t('dirtyMark')}>
-            ●
-          </span>
+          <span data-testid="tab-dirty" className="dn-tab-dirty" role="img" aria-label={t('dirtyMark')} title={t('dirtyMark')} />
         )}
       </>
     )
@@ -61,7 +60,7 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => void getCommands().closeTab(leaf.id, i)}
           >
-            ✕
+            <Icon name="close" />
           </button>
         </div>
       ))}

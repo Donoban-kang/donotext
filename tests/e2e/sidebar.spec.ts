@@ -37,7 +37,7 @@ test('clicking a file opens it and expanding a folder lazily lists its children'
   await openFolder(page)
   await tree(page).getByRole('button', { name: 'a.md', exact: true }).click()
   await expect(page.getByTestId('tab')).toHaveText(/a\.md/)
-  await tree(page).getByRole('button', { name: '▸ sub', exact: true }).click()
+  await tree(page).getByRole('button', { name: 'sub', exact: true }).click()
   await expect(tree(page).getByRole('button', { name: 'd.md', exact: true })).toBeVisible()
 })
 

@@ -12,6 +12,7 @@ import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
 import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
+import { Icon } from './icons'
 import { ThemeController } from './ThemeController'
 import './app.css'
 import './theme.css'
@@ -71,33 +72,64 @@ export function App(): React.ReactElement {
     <div className="dn-app" data-testid="workspace">
       <header className="dn-toolbar">
         <h1>{t('appName')}</h1>
-        <button onClick={() => void c.openFile()}>{t('open')}</button>
-        <button onClick={() => c.newUntitled()}>{t('newDoc')}</button>
-        <button onClick={() => void c.saveActive()}>{t('save')}</button>
-        <button onClick={() => void c.saveAsActive()}>{t('saveAs')}</button>
-        <button disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
+        <button className="dn-btn" title={t('open')} onClick={() => void c.openFile()}>
+          <Icon name="folder" />
+          <span className="dn-lbl">{t('open')}</span>
+        </button>
+        <button className="dn-btn" title={t('newDoc')} onClick={() => c.newUntitled()}>
+          <Icon name="plus" />
+          <span className="dn-lbl">{t('newDoc')}</span>
+        </button>
+        <button className="dn-btn dn-btn-primary" title={t('save')} onClick={() => void c.saveActive()}>
+          <Icon name="save" />
+          <span className="dn-lbl">{t('save')}</span>
+        </button>
+        <button className="dn-btn" title={t('saveAs')} onClick={() => void c.saveAsActive()}>
+          <Icon name="saveAs" />
+          <span className="dn-lbl">{t('saveAs')}</span>
+        </button>
+        <span className="dn-toolbar-sep" />
+        <button className="dn-btn" title={t('splitRight')} onClick={() => c.splitActive('row')}>
+          <Icon name="splitRight" />
+          <span className="dn-lbl">{t('splitRight')}</span>
+        </button>
+        <button className="dn-btn" title={t('splitDown')} onClick={() => c.splitActive('col')}>
+          <Icon name="splitDown" />
+          <span className="dn-lbl">{t('splitDown')}</span>
+        </button>
+        <button className="dn-btn" title={t('closePane')} disabled={leafCount < 2} onClick={() => void c.closePane()}>
+          <Icon name="closePane" />
+          <span className="dn-lbl">{t('closePane')}</span>
+        </button>
+        <button
+          className="dn-btn"
+          title={t('scrollLinkOn')}
+          disabled={leafCount < 2}
+          aria-pressed={linked}
+          onClick={() => c.toggleScrollLink()}
+        >
+          <Icon name="link" />
+          <span className="dn-lbl">{t('scrollLinkOn')}</span>
+        </button>
+        <button className="dn-btn" title={t('compare')} disabled={docCount < 2} onClick={() => setCompareOpen(true)}>
+          <Icon name="compare" />
+          <span className="dn-lbl">{t('compare')}</span>
+        </button>
+        <span className="dn-toolbar-sep" />
+        <button className="dn-btn" title={t('exportHtml')} disabled={!canToggle} onClick={() => void c.exportActive('html')}>
+          <Icon name="html" />
+          <span className="dn-lbl">{t('exportHtml')}</span>
+        </button>
+        <button className="dn-btn" title={t('exportPdf')} disabled={!canToggle} onClick={() => void c.exportActive('pdf')}>
+          <Icon name="pdf" />
+          <span className="dn-lbl">{t('exportPdf')}</span>
+        </button>
+        <span className="dn-grow" />
+        <button className="dn-chip" disabled={!activeView || !canToggle} onClick={() => c.toggleView()}>
           {activeView === 'source' ? t('wysiwygMode') : t('sourceMode')}
         </button>
-        <span className="dn-toolbar-sep" />
-        <button onClick={() => c.splitActive('row')}>{t('splitRight')}</button>
-        <button onClick={() => c.splitActive('col')}>{t('splitDown')}</button>
-        <button disabled={leafCount < 2} onClick={() => void c.closePane()}>
-          {t('closePane')}
-        </button>
-        <button disabled={leafCount < 2} aria-pressed={linked} onClick={() => c.toggleScrollLink()}>
-          {t('scrollLinkOn')}
-        </button>
-        <button disabled={!canToggle} onClick={() => void c.exportActive('html')}>
-          {t('exportHtml')}
-        </button>
-        <button disabled={!canToggle} onClick={() => void c.exportActive('pdf')}>
-          {t('exportPdf')}
-        </button>
-        <button disabled={docCount < 2} onClick={() => setCompareOpen(true)}>
-          {t('compare')}
-        </button>
-        <span className="dn-toolbar-sep" />
         <select
+          className="dn-select"
           aria-label={t('recentFiles')}
           value=""
           disabled={recent.length === 0}
@@ -111,21 +143,27 @@ export function App(): React.ReactElement {
           ))}
         </select>
         <label className="dn-toolbar-check">
-          {t('theme')}{' '}
-          <select value={theme} onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')} aria-label={t('theme')}>
+          <span className="dn-lbl-inline">{t('theme')}</span>
+          <select
+            className="dn-select"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
+            aria-label={t('theme')}
+          >
             <option value="system">{t('themeSystem')}</option>
             <option value="light">{t('themeLight')}</option>
             <option value="dark">{t('themeDark')}</option>
           </select>
         </label>
-        <label className="dn-toolbar-check">
-          <input type="checkbox" checked={focusMode} onChange={(e) => setFocusMode(e.target.checked)} /> {t('focusMode')}
+        <label className="dn-toggle">
+          <input type="checkbox" checked={focusMode} onChange={(e) => setFocusMode(e.target.checked)} /> <span>{t('focusMode')}</span>
         </label>
-        <label className="dn-toolbar-check">
-          <input type="checkbox" checked={typewriterMode} onChange={(e) => setTypewriterMode(e.target.checked)} /> {t('typewriterMode')}
+        <label className="dn-toggle">
+          <input type="checkbox" checked={typewriterMode} onChange={(e) => setTypewriterMode(e.target.checked)} />{' '}
+          <span>{t('typewriterMode')}</span>
         </label>
-        <label className="dn-toolbar-check">
-          <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> {t('autoSave')}
+        <label className="dn-toggle">
+          <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> <span>{t('autoSave')}</span>
         </label>
       </header>
       <div className="dn-body">

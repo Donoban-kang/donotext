@@ -1,28 +1,51 @@
+/* Design tokens. "Calm editor chrome, rounded Toss-like shapes, one blue accent." */
 :root, :root[data-theme="light"] {
   color-scheme: light;
-  --dn-accent: #2f6fed;
+  --dn-canvas: #f6f7f9;
+  --dn-surface: #ffffff;
+  --dn-text: #222831;
+  --dn-sub: #6f7888;
+  --dn-line: #e6e9ee;
+  --dn-hover: rgba(34, 40, 49, .06);
+  --dn-accent: #3182f6;
+  --dn-accent-soft: #eaf2fe;
+  --dn-accent-fg: #ffffff;
+  --dn-danger: #e5484d;
+  --dn-warn-bg: #fff6df;
+  --dn-warn-line: #f2d98a;
   --dn-hl-keyword: #a626a4;
   --dn-hl-string: #50a14f;
   --dn-hl-number: #986801;
   --dn-hl-comment: #8a8f98;
   --dn-hl-title: #4078f2;
+  --dn-shadow: 0 8px 32px rgba(16, 24, 40, .16);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --dn-accent: #7aa7ff;
+  --dn-canvas: #16171a;
+  --dn-surface: #1e1f24;
+  --dn-text: #e6e8ec;
+  --dn-sub: #8b93a1;
+  --dn-line: #2d2f36;
+  --dn-hover: rgba(255, 255, 255, .07);
+  --dn-accent: #5aa0ff;
+  --dn-accent-soft: #1e2d45;
+  --dn-accent-fg: #0b1220;
+  --dn-danger: #ff7a80;
+  --dn-warn-bg: #3a3118;
+  --dn-warn-line: #6b5a1f;
   --dn-hl-keyword: #d68ee8;
   --dn-hl-string: #98c379;
   --dn-hl-number: #d19a66;
   --dn-hl-comment: #7f8794;
   --dn-hl-title: #61afef;
+  --dn-shadow: 0 8px 32px rgba(0, 0, 0, .5);
 }
-body { background: Canvas; color: CanvasText; }
-.dn-pane.active { border-color: var(--dn-accent); }
-.dn-divider:hover, .dn-divider:focus-visible { background: var(--dn-accent); }
-.cm-editor { background: Canvas; color: CanvasText; }
-.cm-editor .cm-gutters { background: Canvas; color: GrayText; border-right: 1px solid rgba(127,127,127,.3); }
+body { background: var(--dn-canvas); color: var(--dn-text); }
+.cm-editor { background: var(--dn-surface); color: var(--dn-text); }
+.cm-editor .cm-gutters { background: var(--dn-surface); color: var(--dn-sub); border-right: 1px solid var(--dn-line); }
 .cm-editor.cm-focused { outline: none; }
-.cm-editor .cm-cursor { border-left-color: CanvasText; }
+.cm-editor .cm-cursor { border-left-color: var(--dn-text); }
 .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-built_in { color: var(--dn-hl-keyword); }
 .hljs-string, .hljs-attr, .hljs-regexp { color: var(--dn-hl-string); }
 .hljs-number, .hljs-symbol, .hljs-bullet { color: var(--dn-hl-number); }

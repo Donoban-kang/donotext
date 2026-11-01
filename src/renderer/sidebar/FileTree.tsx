@@ -4,6 +4,7 @@ import type { DirEntry } from '../../shared/fsTypes'
 import { isSameOrInside } from '../../shared/paths'
 import { getCommands } from '../app/appCommands'
 import { t } from '../app/i18n'
+import { Icon } from '../app/icons'
 import { useDocuments } from '../store/documents'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
@@ -194,7 +195,7 @@ export function FileTree(): React.ReactElement {
                     className="dn-tree-name"
                     onClick={() => (entry.isDir ? void toggle(entry.path) : void getCommands().openPath(entry.path))}
                   >
-                    {entry.isDir ? (isOpen ? '▾ ' : '▸ ') : ''}
+                    {entry.isDir && <span className={'dn-tree-caret' + (isOpen ? ' open' : '')} aria-hidden="true"><Icon name="chevron" /></span>}
                     {entry.name}
                   </button>
                 )}
@@ -202,7 +203,7 @@ export function FileTree(): React.ReactElement {
                   <span className="dn-tree-actions">
                     {entry.isDir && (
                       <button aria-label={`${t('newFile')} ${entry.name}`} onClick={() => startCreate(false, entry.path)}>
-                        ＋
+                        <Icon name="plus" />
                       </button>
                     )}
                     <button
@@ -212,10 +213,10 @@ export function FileTree(): React.ReactElement {
                         setEditing({ mode: 'rename', path: entry.path, name: entry.name })
                       }}
                     >
-                      ✎
+                      <Icon name="edit" />
                     </button>
                     <button aria-label={`${t('delete')} ${entry.name}`} onClick={() => void remove(entry)}>
-                      🗑
+                      <Icon name="trash" />
                     </button>
                   </span>
                 )}
