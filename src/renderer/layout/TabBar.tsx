@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { t } from '../app/i18n'
 import { getCommands } from '../app/appCommands'
 import { Icon } from '../app/icons'
@@ -42,6 +42,8 @@ function tabStateClass(tab: Tab, docs: Record<string, Doc>): string {
   return d.text !== d.baseline && d.text !== d.baselineNormalized ? ' fork modified' : ' fork'
 }
 
+const EDGE = 10
+
 export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
   const activate = useLayout((s) => s.activateTab)
   const docs = useDocuments((s) => s.docs)
@@ -57,6 +59,47 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
     setStats(null)
   }
   useEffect(() => cancel, [])
+
+  // When there are more tabs than fit, arrows at both ends move the row so every tab can be reached.
+  const scroller = useRef<HTMLDivElement>(null)
+  const [canLeft, setCanLeft] = useState(false)
+  const [canRight, setCanRight] = useState(false)
+  const updateArrows = (): void => {
+    const el = scroller.current
+    if (!el) return
+    // The row has 8px of padding at each end, so "at the end" means within that padding.
+    setCanLeft(el.scrollLeft > EDGE)
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE)
+  }
+  useLayoutEffect(updateArrows) // after every render: tab names and counts change the row's width
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const observer = new ResizeObserver(updateArrows)
+    observer.observe(el)
+    // The mouse wheel moves a long row sideways (a plain wheel only scrolls up and down otherwise).
+    const onWheel = (e: WheelEvent): void => {
+      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      observer.disconnect()
+      el.removeEventListener('wheel', onWheel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // The tab you just opened or selected must be visible, even when it sits past the edge.
+  useEffect(() => {
+    scroller.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [leaf.active, leaf.tabs.length, leaf.id])
+  const scrollBy = (dir: -1 | 1): void => {
+    const el = scroller.current
+    if (el) el.scrollBy({ left: dir * Math.max(120, el.clientWidth * 0.6), behavior: 'smooth' })
+  }
+  const overflowing = canLeft || canRight
+
   // A tab that disappears under the mouse (closed, moved) never reports "mouse left"; drop its hover card here.
   useEffect(() => {
     cancel()
@@ -64,7 +107,16 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaf.tabs])
   return (
-    <div className="dn-tabbar" role="tablist" onScroll={hide}>
+    <div className="dn-tabbar-wrap">
+      {overflowing && (
+        <button className="dn-tab-scroll" aria-label={t('tabsScrollLeft')} disabled={!canLeft} onClick={() => scrollBy(-1)}>
+          <Icon name="triLeft" />
+        </button>
+      )}
+      <div ref={scroller} className="dn-tabbar" role="tablist" onScroll={() => {
+        hide()
+        updateArrows()
+      }}>
       {leaf.tabs.map((tab, i) => (
         <div
           key={tab.kind === 'doc' ? tab.docId : `${tab.leftDocId}:${tab.rightDocId}`}
@@ -119,6 +171,12 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
       ))}
       {stats && <TabStats anchor={stats} />}
       {menu && <TabContextMenu anchor={menu} onClose={() => setMenu(null)} />}
+      </div>
+      {overflowing && (
+        <button className="dn-tab-scroll" aria-label={t('tabsScrollRight')} disabled={!canRight} onClick={() => scrollBy(1)}>
+          <Icon name="triRight" />
+        </button>
+      )}
     </div>
   )
 }

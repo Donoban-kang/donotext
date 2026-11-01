@@ -59,7 +59,15 @@ body {
 .dn-divider:focus-visible { outline: none; }
 
 /* ---------- Tabs ---------- */
-.dn-tabbar { display: flex; gap: 4px; padding: 8px 8px 6px; overflow-x: auto; border-bottom: 1px solid var(--dn-line); scrollbar-width: none; }
+/* The tab row scrolls sideways inside a frame; ◀ ▶ buttons appear at both ends when the tabs do not all fit. */
+.dn-tabbar-wrap { display: flex; align-items: stretch; min-width: 0; border-bottom: 1px solid var(--dn-line); }
+.dn-tabbar { flex: 1; min-width: 0; display: flex; gap: 4px; padding: 8px 8px 6px; overflow-x: auto; scrollbar-width: none; }
+.dn-tab-scroll { flex: none; width: 28px; display: flex; align-items: center; justify-content: center; margin: 8px 0 6px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--dn-sub); cursor: pointer; }
+.dn-tab-scroll:first-child { margin-left: 6px; }
+.dn-tab-scroll:last-child { margin-right: 6px; }
+.dn-tab-scroll:hover:not(:disabled) { background: var(--dn-hover); color: var(--dn-text); }
+.dn-tab-scroll:disabled { opacity: .28; cursor: default; }
+.dn-icon-solid { fill: currentColor; stroke: none; width: 15px; height: 15px; }
 .dn-tabbar::-webkit-scrollbar { display: none; }
 .dn-tab { display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 8px; color: var(--dn-sub); cursor: pointer; white-space: nowrap; user-select: none; }
 .dn-tab:hover { background: var(--dn-hover); }

@@ -9,6 +9,8 @@ export const ko = {
   emptyPane: '파일을 열거나 새 문서를 만들어 시작하세요.',
   closeTab: '탭 닫기',
   dirtyMark: '수정됨',
+  tabsScrollLeft: '왼쪽 탭 보기',
+  tabsScrollRight: '오른쪽 탭 보기',
   discard: '저장 안 함',
   cancel: '취소',
   confirmUnsavedTitle: '"{name}"의 변경 내용을 저장할까요?',

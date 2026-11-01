@@ -19,6 +19,8 @@ const PATHS = {
   help: 'M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM6.3 6.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M8 11.6v.1',
   settings: 'M3 4.5h6M11.5 4.5H13M3 11.5h1.5M7 11.5h6M9 3v3M6 10v3',
   download: 'M4 2.5h5l3 3v8H4zM9 2.5v3h3M8 7v3.4M6.4 9l1.6 1.6L9.6 9',
+  triLeft: 'M10.5 3.5v9L4.5 8z',
+  triRight: 'M5.5 3.5v9L11.5 8z',
   chevron: 'M6 4l4 4-4 4',
 } as const
 
@@ -26,7 +28,7 @@ export type IconName = keyof typeof PATHS
 
 export function Icon({ name }: { name: IconName }): React.ReactElement {
   return (
-    <svg className="dn-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg className={name.startsWith('tri') ? 'dn-icon dn-icon-solid' : 'dn-icon'} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
       <path d={PATHS[name]} />
     </svg>
   )
