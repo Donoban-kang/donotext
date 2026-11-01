@@ -86,6 +86,28 @@ describe('closing an edited copy', () => {
   })
 })
 
+describe('replaceAndClose (tab menu)', () => {
+  it('overwrites the original after confirmation and closes only the copy tab', async () => {
+    const c = await withCopy({ overwrite: true })
+    expect(await c.commands.replaceAndClose(c.right.id, 0)).toBe(true)
+    expect((await c.api.readFile('/w/a.md')).text).toBe(ORIGINAL + 'more\n')
+    expect(c.documents.getState().docs[c.copy]).toBeUndefined()
+    expect(c.documents.getState().docs[c.original].text).toBe(ORIGINAL + 'more\n')
+    expect(allLeaves(c.layout.getState().root).find((l) => l.id === c.right.id)!.tabs).toHaveLength(0)
+  })
+  it('leaves everything alone when the confirmation is declined', async () => {
+    const c = await withCopy({ overwrite: false })
+    expect(await c.commands.replaceAndClose(c.right.id, 0)).toBe(false)
+    expect((await c.api.readFile('/w/a.md')).text).toBe(ORIGINAL)
+    expect(c.documents.getState().docs[c.copy]).toBeDefined()
+  })
+  it('does nothing for a tab that is not an edited copy', async () => {
+    const c = await withCopy({ overwrite: true })
+    expect(await c.commands.replaceAndClose(c.left.id, 0)).toBe(false)
+    expect(c.documents.getState().docs[c.original]).toBeDefined()
+  })
+})
+
 describe('saving an edited copy', () => {
   it('a plain save asks for a new name and never writes the original path', async () => {
     const c = await withCopy()

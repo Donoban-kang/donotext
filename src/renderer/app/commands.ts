@@ -195,8 +195,26 @@ export function createCommands(deps: CommandDeps) {
       if (choice === 'cancel') return false
       if (choice === 'save' && !(await saveDoc(id))) return false
     }
+    removeTab(leafId, index, ids)
+    return true
+  }
+
+  function removeTab(leafId: string, index: number, ids: string[]): void {
     lay().closeTabAt(leafId, index)
     for (const id of ids) if (lay().docRefs(id) === 0) docs().close(id)
+  }
+
+  /** Context-menu action for an edited copy: overwrite the original (after confirming), then close the copy's tab. */
+  async function replaceAndClose(leafId: string, index: number): Promise<boolean> {
+    flush()
+    const tab = findLeaf(lay().root, leafId)?.tabs[index]
+    if (!tab || tab.kind !== 'doc') return false
+    const d = docs().docs[tab.docId]
+    if (!d?.fork || !(await replaceOriginal(d.id))) return false
+    // The tab may have moved while the confirmation was open.
+    const leaf = findLeaf(lay().root, leafId)
+    const at = leaf?.tabs.findIndex((x) => x.kind === 'doc' && x.docId === d.id) ?? -1
+    if (at >= 0) removeTab(leafId, at, [d.id])
     return true
   }
 
@@ -307,7 +325,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc, replaceOriginal }
+  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc, replaceOriginal, replaceAndClose }
 }
 
 export type Commands = ReturnType<typeof createCommands>

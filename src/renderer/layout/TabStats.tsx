@@ -12,6 +12,7 @@ export interface StatsAnchor {
 
 /** Hover card under a tab: word, character, paragraph and byte counts, kept live while the text changes. */
 export function TabStats({ anchor }: { anchor: StatsAnchor }): React.ReactElement | null {
+  const name = useDocuments((s) => s.docs[anchor.docId]?.name)
   const text = useDocuments((s) => s.docs[anchor.docId]?.text)
   const eol = useDocuments((s) => s.docs[anchor.docId]?.eol)
   const bom = useDocuments((s) => s.docs[anchor.docId]?.bom)
@@ -27,6 +28,7 @@ export function TabStats({ anchor }: { anchor: StatsAnchor }): React.ReactElemen
   ]
   return (
     <div role="tooltip" data-testid="tab-stats" className="dn-tab-stats" style={{ left: anchor.left, top: anchor.top }}>
+      <div className="dn-tab-stats-name">{name}</div>
       <dl>
         {rows.map(([label, value]) => (
           <div key={label}>

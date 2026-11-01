@@ -6,6 +6,7 @@ import { Icon } from '../app/icons'
 import { useDocuments, type Doc } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import { hasCopies } from '../editor/editRouter'
+import { TabContextMenu, type MenuAnchor } from './TabContextMenu'
 import { TabStats, type StatsAnchor } from './TabStats'
 import type { Leaf, Tab } from './tree'
 
@@ -45,6 +46,7 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
   const activate = useLayout((s) => s.activateTab)
   const docs = useDocuments((s) => s.docs)
   const [stats, setStats] = useState<StatsAnchor | null>(null)
+  const [menu, setMenu] = useState<MenuAnchor | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancel = (): void => {
     if (timer.current) clearTimeout(timer.current)
@@ -73,6 +75,12 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
             timer.current = setTimeout(() => setStats(next), 350)
           }}
           onMouseLeave={hide}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            hide()
+            activate(leaf.id, i) // the menu acts on the tab that was clicked, which then becomes the active one
+            setMenu({ x: e.clientX, y: e.clientY, leafId: leaf.id, index: i })
+          }}
           onDragStart={(e) => {
             hide()
             e.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ leafId: leaf.id, index: i }))
@@ -101,6 +109,7 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
         </div>
       ))}
       {stats && <TabStats anchor={stats} />}
+      {menu && <TabContextMenu anchor={menu} onClose={() => setMenu(null)} />}
     </div>
   )
 }
