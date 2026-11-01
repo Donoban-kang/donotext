@@ -14,7 +14,7 @@ test('help button at the bottom of the sidebar shows version, author and a link 
   const dialog = page.getByRole('dialog', { name: '도움말' })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByTestId('help-version')).toHaveText('v0.0.0-dev')
-  await expect(dialog.getByText('Donoban-kang', { exact: true })).toBeVisible()
+  await expect(dialog.getByTestId('help-author')).toHaveText('Donoban-Kang (강돈호)')
   await dialog.getByRole('button', { name: 'GitHub에서 보기' }).click()
   expect(await page.evaluate(() => window.__mock!.externalUrls)).toEqual(['https://github.com/Donoban-kang/donotext'])
 

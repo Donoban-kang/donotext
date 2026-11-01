@@ -111,6 +111,7 @@ export const ko = {
   helpAbout: '프로그램 정보',
   helpVersion: '버전',
   helpAuthor: '만든이',
+  helpAuthorName: 'Donoban-Kang (강돈호)',
   helpProject: '프로젝트 페이지',
   helpOpenProject: 'GitHub에서 보기',
   helpUpdate: '업데이트',

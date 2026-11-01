@@ -72,7 +72,7 @@ export function HelpDialog(): React.ReactElement | null {
               {t('helpVersion')} <span data-testid="help-version">{info ? `v${info.version}` : '…'}</span>
             </dd>
             <dt>{t('helpAuthor')}</dt>
-            <dd>{info?.author ?? '…'}</dd>
+            <dd data-testid="help-author">{info ? t('helpAuthorName') : '…'}</dd>
             <dt>{t('helpProject')}</dt>
             <dd>
               <button className="dn-link" disabled={!info} onClick={() => info && openLink(info.repoUrl)}>
