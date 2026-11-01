@@ -7,6 +7,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 :focus-visible { outline: 2px solid var(--dn-accent); outline-offset: 1px; }
+/* The writing surfaces show their own caret; a box around the whole page looks like an input field. */
+.ProseMirror:focus-visible, .ProseMirror:focus, .cm-editor :focus-visible, .dn-wysiwyg:focus-visible { outline: none; }
 .dn-app { display: flex; flex-direction: column; height: 100%; background: var(--dn-canvas); }
 
 /* ---------- Toolbar: icons only, labels stay for screen readers and tooltips ---------- */
