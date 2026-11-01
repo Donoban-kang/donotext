@@ -46,7 +46,8 @@ Windows(NSIS)·macOS(dmg)·Linux(AppImage) 설정은 `electron-builder.yml`에 �
 - **CI** (`.github/workflows/ci.yml`): 모든 push와 Pull Request에서 타입 검사, i18n 점검, 단위 테스트, 빌드, 브라우저 E2E를 실행합니다.
 - **릴리스** (`.github/workflows/release.yml`): Windows·macOS·Linux 설치 파일을 각 운영체제 러너에서 만듭니다.
   - `v0.1.0`처럼 `v`로 시작하는 태그를 푸시하면 빌드 후 **초안(draft) 릴리스**에 설치 파일이 첨부됩니다. 내용을 확인하고 GitHub에서 직접 게시하세요. 태그는 `package.json`의 `version`과 같아야 합니다(`v` 제외).
-  - Actions 탭에서 **Release → Run workflow**로 수동 실행하면, 릴리스는 만들지 않고 설치 파일을 14일간 내려받을 수 있는 아티팩트로만 남깁니다.
+  - 태그를 직접 푸시할 수 없는 환경이면 Actions 탭에서 **Release → Run workflow**를 누르고 `release_tag`에 `v0.1.0`을 적으세요. 같은 초안 릴리스가 만들어지고, **초안을 게시(Publish)하는 순간** GitHub가 그 커밋에 태그를 만듭니다.
+  - `release_tag`를 비워 두고 수동 실행하면, 릴리스는 만들지 않고 설치 파일을 14일간 내려받을 수 있는 아티팩트로만 남깁니다.
 
 ```bash
 # 예: 0.1.0 릴리스
