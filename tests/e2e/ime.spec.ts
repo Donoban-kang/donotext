@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
-import { focusEditorAtEnd, openSeed } from './helpers'
+import { enableSplitSync, focusEditorAtEnd, openSeed } from './helpers'
 
 // These tests drive a REAL IME composition (compositionstart/update/end with composed text) through CDP.
 const panes = (page: Page) => page.locator('.dn-pane')
 
 async function setup(page: Page): Promise<void> {
   await openSeed(page, { '/w/a.md': '# 제목\n\n본문\n' }, ['/w/a.md'])
+  await enableSplitSync(page)
   await page.getByRole('button', { name: '좌우 분할' }).click()
   await expect(panes(page)).toHaveCount(2)
 }

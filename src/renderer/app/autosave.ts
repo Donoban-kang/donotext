@@ -20,7 +20,8 @@ export function createAutoSaver({ documents, save, enabled, delayMs = 1500 }: Au
   const evaluate = (): void => {
     const state = documents.getState()
     for (const d of Object.values(state.docs)) {
-      const eligible = enabled() && d.path !== null && !d.readOnly && state.isDirty(d.id)
+      // Edited copies are never written automatically: they must not touch the original.
+      const eligible = enabled() && d.path !== null && !d.readOnly && !d.fork && state.isDirty(d.id)
       if (!eligible) {
         cancel(d.id)
         continue

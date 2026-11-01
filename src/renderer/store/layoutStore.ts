@@ -8,6 +8,7 @@ import {
   moveTab,
   newLeaf,
   openTab,
+  repointDoc,
   resize,
   setActiveTab,
   splitLeaf,
@@ -47,8 +48,14 @@ export interface LayoutState {
   setTabView(leafId: string, index: number, view: 'wysiwyg' | 'source'): void
   /** Number of tabs (doc or compare) that reference the document. */
   docRefs(docId: string): number
+  /** Number of editor tabs showing the document (comparison tabs do not count). */
+  docTabRefs(docId: string): number
+  /** Switches a tab to an edited copy of its document. */
+  repointDoc(leafId: string, index: number, docId: string): void
   getActiveTab(): ActiveTabRef | null
 }
+
+let keySeq = 0
 
 export function createLayoutStore() {
   const initial = newLeaf()
@@ -142,6 +149,19 @@ export function createLayoutStore() {
         return allLeaves(get().root)
           .flatMap((l) => l.tabs)
           .filter((t) => tabDocIds(t).includes(docId)).length
+      },
+
+      docTabRefs(docId) {
+        return allLeaves(get().root)
+          .flatMap((l) => l.tabs)
+          .filter((t) => t.kind === 'doc' && t.docId === docId).length
+      },
+
+      repointDoc(leafId, index, docId) {
+        const leaf = findLeaf(get().root, leafId)
+        const tab = leaf?.tabs[index]
+        if (!tab || tab.kind !== 'doc') return
+        set((s) => ({ root: repointDoc(s.root, leafId, index, docId, `copy-${tab.docId}-${++keySeq}`) }))
       },
 
       getActiveTab() {

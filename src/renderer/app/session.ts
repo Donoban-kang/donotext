@@ -23,7 +23,7 @@ export function parseSession(json: unknown): SessionData | null {
   const docs: SessionDoc[] = []
   for (const d of json.docs) {
     if (!isObj(d) || typeof d.id !== 'string' || !(typeof d.path === 'string' || d.path === null)) return null
-    docs.push({ id: d.id, path: d.path })
+    docs.push(d.fork === true ? { id: d.id, path: d.path, fork: true } : { id: d.id, path: d.path })
   }
   const recent = Array.isArray(json.recent) ? json.recent.filter((p): p is string => typeof p === 'string').slice(0, 10) : []
   return {
@@ -40,7 +40,7 @@ export function captureSession({ documents, layout, workspace }: SessionStores):
   return {
     version: 1,
     layout: layout.getState().root,
-    docs: Object.values(documents.getState().docs).map((d) => ({ id: d.id, path: d.path })),
+    docs: Object.values(documents.getState().docs).map((d) => (d.fork ? { id: d.id, path: d.path, fork: true } : { id: d.id, path: d.path })),
     folder: workspace.getState().root,
     activeLeafId: layout.getState().activeLeafId,
     recent: workspace.getState().recent
@@ -80,7 +80,8 @@ export async function restoreSession(deps: RestoreDeps): Promise<boolean> {
     let id: string | null = null
     if (entry.path) {
       try {
-        id = documents.getState().open(await api.readFile(entry.path))
+        const r = await api.readFile(entry.path)
+        id = entry.fork ? documents.getState().openFork(r) : documents.getState().open(r)
       } catch {
         // The file is gone (moved, renamed, unmounted drive). Unsaved edits must not be lost with it.
         if (backup !== undefined && backup !== '') {

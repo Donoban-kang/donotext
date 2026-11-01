@@ -23,3 +23,8 @@ export async function openSeed(page: Page, seed: Record<string, string>, open: s
     await page.getByRole('button', { name: '열기', exact: true }).click()
   }
 }
+
+/** Turns on "분할 창 동기화": split panes of one file edit the same text, as they did before edited copies existed. */
+export async function enableSplitSync(page: Page): Promise<void> {
+  await page.getByLabel('분할 창 동기화').check()
+}

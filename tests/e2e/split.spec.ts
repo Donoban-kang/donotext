@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { focusEditorAtEnd, openSeed } from './helpers'
+import { enableSplitSync, focusEditorAtEnd, openSeed } from './helpers'
 
 const panes = (page: Page) => page.locator('.dn-pane')
 const editorIn = (page: Page, n: number) => panes(page).nth(n).locator('.ProseMirror')
@@ -69,6 +69,7 @@ test.describe('splitting', () => {
 test.describe('same file in two panes', () => {
   test('typing in one pane updates the other without losing the caret', async ({ page }) => {
     await openSeed(page, { '/w/a.md': '# 제목\n\n본문\n' }, ['/w/a.md'])
+    await enableSplitSync(page)
     await page.getByRole('button', { name: '좌우 분할' }).click()
     await focusEditorAtEnd(page, editorIn(page, 1))
     await page.keyboard.type('abc')
@@ -81,6 +82,7 @@ test.describe('same file in two panes', () => {
 
   test('a remote update waits while an IME composition is active, then applies', async ({ page }) => {
     await openSeed(page, { '/w/a.md': '# 제목\n\n본문\n' }, ['/w/a.md'])
+    await enableSplitSync(page)
     await page.getByRole('button', { name: '좌우 분할' }).click()
     // Pane 0 is mid-composition (e.g. typing Hangul)…
     await editorIn(page, 0).evaluate((el) => el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })))

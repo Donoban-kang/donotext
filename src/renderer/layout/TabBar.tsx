@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import { t } from '../app/i18n'
 import { getCommands } from '../app/appCommands'
 import { Icon } from '../app/icons'
-import { useDocuments } from '../store/documents'
+import { useDocuments, type Doc } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
+import { hasCopies } from '../editor/editRouter'
 import { TabStats, type StatsAnchor } from './TabStats'
 import type { Leaf, Tab } from './tree'
 
@@ -15,9 +16,12 @@ function TabLabel({ tab }: { tab: Tab }): React.ReactElement {
   const dirty = useDocuments((s) => s.isDirty)
   if (tab.kind === 'doc') {
     const d = docs[tab.docId]
+    const original = d !== undefined && hasCopies(docs, d)
     return (
       <>
         <span className="dn-tab-name">{d?.name ?? '?'}</span>
+        {d?.fork && <span className="dn-tab-badge dn-tab-badge-fork">{t('forkBadge')}</span>}
+        {original && <span className="dn-tab-badge">{t('originalBadge')}</span>}
         {d && dirty(d.id) && (
           <span data-testid="tab-dirty" className="dn-tab-dirty" role="img" aria-label={t('dirtyMark')} title={t('dirtyMark')} />
         )}
@@ -29,8 +33,17 @@ function TabLabel({ tab }: { tab: Tab }): React.ReactElement {
   return <span className="dn-tab-name">{`${l?.name ?? '?'} ↔ ${r?.name ?? '?'}`}</span>
 }
 
+/** Edited copies get their own colour once they differ from the saved file, so they are easy to tell apart. */
+function tabStateClass(tab: Tab, docs: Record<string, Doc>): string {
+  if (tab.kind !== 'doc') return ''
+  const d = docs[tab.docId]
+  if (!d?.fork) return ''
+  return d.text !== d.baseline && d.text !== d.baselineNormalized ? ' fork modified' : ' fork'
+}
+
 export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
   const activate = useLayout((s) => s.activateTab)
+  const docs = useDocuments((s) => s.docs)
   const [stats, setStats] = useState<StatsAnchor | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancel = (): void => {
@@ -65,7 +78,7 @@ export function TabBar({ leaf }: { leaf: Leaf }): React.ReactElement {
             e.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ leafId: leaf.id, index: i }))
             e.dataTransfer.effectAllowed = 'move'
           }}
-          className={'dn-tab' + (i === leaf.active ? ' active' : '')}
+          className={'dn-tab' + (i === leaf.active ? ' active' : '') + tabStateClass(tab, docs)}
           onMouseDown={(e) => {
             hide()
             if (e.button === 1) {

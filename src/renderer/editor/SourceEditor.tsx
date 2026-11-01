@@ -44,7 +44,10 @@ export function SourceEditor({ docId, paneId }: SourceEditorProps): React.ReactE
       binding.detach()
       view.destroy()
     }
-  }, [docId, paneId])
+    // The editor keeps running when its pane is switched to an edited copy of the document (the binding
+    // follows the copy itself), so only a different pane may recreate it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paneId])
 
   return <div ref={host} className="dn-source-host" />
 }

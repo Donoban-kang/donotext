@@ -11,6 +11,8 @@
   --dn-accent-soft: #eaf2fe;
   --dn-accent-fg: #ffffff;
   --dn-danger: #e5484d;
+  --dn-fork: #d9480f;
+  --dn-fork-soft: #fff0e6;
   --dn-warn-bg: #fff6df;
   --dn-warn-line: #f2d98a;
   --dn-hl-keyword: #a626a4;
@@ -32,6 +34,8 @@
   --dn-accent-soft: #1e2d45;
   --dn-accent-fg: #0b1220;
   --dn-danger: #ff7a80;
+  --dn-fork: #ff9f6b;
+  --dn-fork-soft: #3a2a1f;
   --dn-warn-bg: #3a3118;
   --dn-warn-line: #6b5a1f;
   --dn-hl-keyword: #d68ee8;

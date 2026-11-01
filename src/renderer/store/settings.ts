@@ -15,9 +15,12 @@ export interface SettingsState {
   setFocusMode(v: boolean): void
   typewriterMode: boolean
   setTypewriterMode(v: boolean): void
+  /** Keep split panes of the same file linked instead of giving the edited pane its own copy. */
+  splitSync: boolean
+  setSplitSync(v: boolean): void
 }
 
-type Persisted = Pick<SettingsState, 'theme' | 'showAllFiles' | 'autoSave' | 'focusMode' | 'typewriterMode'>
+type Persisted = Pick<SettingsState, 'theme' | 'showAllFiles' | 'autoSave' | 'focusMode' | 'typewriterMode' | 'splitSync'>
 
 /** localStorage can be missing, blocked or corrupt; settings must still work in memory then. */
 const safeStorage: PersistStorage<Persisted> = {
@@ -52,7 +55,7 @@ function sanitize(stored: unknown): Partial<Persisted> {
   const s = (typeof stored === 'object' && stored !== null ? stored : {}) as Record<string, unknown>
   const out: Partial<Persisted> = {}
   if (typeof s.theme === 'string' && THEMES.includes(s.theme)) out.theme = s.theme as Theme
-  for (const key of ['showAllFiles', 'autoSave', 'focusMode', 'typewriterMode'] as const) {
+  for (const key of ['showAllFiles', 'autoSave', 'focusMode', 'typewriterMode', 'splitSync'] as const) {
     if (typeof s[key] === 'boolean') out[key] = s[key]
   }
   return out
@@ -71,7 +74,9 @@ export function createSettingsStore() {
         focusMode: false,
         setFocusMode: (v) => set({ focusMode: v }),
         typewriterMode: false,
-        setTypewriterMode: (v) => set({ typewriterMode: v })
+        setTypewriterMode: (v) => set({ typewriterMode: v }),
+        splitSync: false,
+        setSplitSync: (v) => set({ splitSync: v })
       }),
       {
         name: SETTINGS_KEY,
@@ -82,7 +87,8 @@ export function createSettingsStore() {
           showAllFiles: s.showAllFiles,
           autoSave: s.autoSave,
           focusMode: s.focusMode,
-          typewriterMode: s.typewriterMode
+          typewriterMode: s.typewriterMode,
+          splitSync: s.splitSync
         }),
         merge: (persisted, current) => ({ ...current, ...sanitize(persisted) })
       }

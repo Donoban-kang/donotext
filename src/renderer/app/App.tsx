@@ -12,7 +12,7 @@ import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
 import { HelpDialog } from './HelpDialog'
-import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, Toasts } from './Overlays'
+import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, ForkCloseDialog, Toasts } from './Overlays'
 import { Icon } from './icons'
 import { ThemeController } from './ThemeController'
 import './app.css'
@@ -61,6 +61,8 @@ export function App(): React.ReactElement {
   const setCompareOpen = useDialogs((s) => s.setCompareOpen)
   const theme = useSettings((s) => s.theme)
   const setTheme = useSettings((s) => s.setTheme)
+  const splitSync = useSettings((s) => s.splitSync)
+  const setSplitSync = useSettings((s) => s.setSplitSync)
   const autoSave = useSettings((s) => s.autoSave)
   const setAutoSave = useSettings((s) => s.setAutoSave)
   const focusMode = useSettings((s) => s.focusMode)
@@ -163,6 +165,9 @@ export function App(): React.ReactElement {
           <input type="checkbox" checked={typewriterMode} onChange={(e) => setTypewriterMode(e.target.checked)} />{' '}
           <span>{t('typewriterMode')}</span>
         </label>
+        <label className="dn-toggle" title={t('splitSyncHint')}>
+          <input type="checkbox" checked={splitSync} onChange={(e) => setSplitSync(e.target.checked)} /> <span>{t('splitSync')}</span>
+        </label>
         <label className="dn-toggle">
           <input type="checkbox" checked={autoSave} onChange={(e) => setAutoSave(e.target.checked)} /> <span>{t('autoSave')}</span>
         </label>
@@ -177,6 +182,7 @@ export function App(): React.ReactElement {
       <ScrollLinkController />
       <ConfirmUnsavedDialog />
       <ConfirmDialog />
+      <ForkCloseDialog />
       <CompareDialog />
       <HelpDialog />
       <Toasts />

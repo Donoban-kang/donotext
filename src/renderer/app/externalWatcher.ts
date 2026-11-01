@@ -13,7 +13,8 @@ export function startExternalWatcher({ api, documents }: ExternalWatcherDeps): (
   async function handle(ev: FileChange): Promise<void> {
     if (ev.kind === 'add') return
     for (const d of Object.values(documents.getState().docs)) {
-      if (d.path !== ev.path) continue
+      // A copy has its own text; the file changing on disk is reported on the original only.
+      if (d.fork || d.path !== ev.path) continue
       let kind: 'change' | 'unlink' = ev.kind
       let disk: ReadResult | undefined
       if (kind === 'change') {

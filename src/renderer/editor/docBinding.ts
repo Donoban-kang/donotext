@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view'
 import { useDocuments } from '../store/documents'
 import { t } from '../app/i18n'
 import { useToasts } from '../store/ui'
+import { commitEdit } from './editRouter'
 import { merge3 } from './merge3'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
 
@@ -22,7 +23,9 @@ export interface DocBinding {
  * editor: debounced writes tagged with `paneId`, no echo of our own edits, and remote updates
  * held back while an IME composition is active.
  */
-export function createDocBinding(docId: string, paneId: string): DocBinding {
+export function createDocBinding(initialDocId: string, paneId: string): DocBinding {
+  // The pane can be switched to an edited copy of its document while typing; follow it.
+  let docId = initialDocId
   const deb = createDebouncer(EDIT_DEBOUNCE_MS)
   let view: EditorView | null = null
   let pending: string | null = null
@@ -56,7 +59,29 @@ export function createDocBinding(docId: string, paneId: string): DocBinding {
     const text = merged ?? local
     deb.cancel()
     if (text !== local) applyRemote(text)
-    useDocuments.getState().setText(docId, text, paneId)
+    write(text)
+  }
+
+  const subscribe = (): void => {
+    offSub?.()
+    offSub = useDocuments.getState().subscribeText(docId, (text, origin) => {
+      const v = view
+      if (!v) return
+      if (origin !== paneId && v.composing) {
+        pending = text
+        return
+      }
+      if (shouldApplyRemote({ selfId: paneId, origin, composing: v.composing })) applyRemote(text)
+    })
+  }
+
+  /** Sends text to the store; if that moved this pane onto its own copy, listen to the copy from now on. */
+  const write = (text: string): void => {
+    const target = commitEdit(docId, text, paneId)
+    if (target !== docId) {
+      docId = target
+      if (view) subscribe()
+    }
   }
 
   return {
@@ -65,7 +90,7 @@ export function createDocBinding(docId: string, paneId: string): DocBinding {
         if (!u.docChanged || u.transactions.some((t) => t.annotation(remote))) return
         deb.call(() => {
           if (u.view.composing && !forcing) return // finishComposition() sends the composed result
-          useDocuments.getState().setText(docId, u.view.state.doc.toString(), paneId)
+          write(u.view.state.doc.toString())
         })
       }),
       EditorView.domEventHandlers({
@@ -87,13 +112,7 @@ export function createDocBinding(docId: string, paneId: string): DocBinding {
         deb.flush()
         forcing = false
       })
-      offSub = useDocuments.getState().subscribeText(docId, (text, origin) => {
-        if (origin !== paneId && v.composing) {
-          pending = text
-          return
-        }
-        if (shouldApplyRemote({ selfId: paneId, origin, composing: v.composing })) applyRemote(text)
-      })
+      subscribe()
     },
     detach() {
       deb.flush()

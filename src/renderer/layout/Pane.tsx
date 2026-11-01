@@ -40,9 +40,9 @@ function PaneBody({ leaf }: { leaf: Leaf }): React.ReactElement {
       )}
       <div className="dn-editor-area">
         {view === 'source' ? (
-          <SourceEditor key={`${doc.id}:source`} docId={doc.id} paneId={leaf.id} />
+          <SourceEditor key={`${tab.key ?? doc.id}:source`} docId={doc.id} paneId={leaf.id} />
         ) : (
-          <WysiwygEditor key={`${doc.id}:wysiwyg`} docId={doc.id} paneId={leaf.id} />
+          <WysiwygEditor key={`${tab.key ?? doc.id}:wysiwyg`} docId={doc.id} paneId={leaf.id} />
         )}
       </div>
     </>

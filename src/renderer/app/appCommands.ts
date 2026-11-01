@@ -3,6 +3,7 @@ import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import { useWorkspace } from '../store/workspace'
 import { useDialogs, useToasts } from '../store/ui'
+import { t } from './i18n'
 import { createCommands, type Commands } from './commands'
 
 let instance: Commands | undefined
@@ -14,6 +15,9 @@ export function getCommands(): Commands {
     documents: useDocuments,
     layout: useLayout,
     confirmUnsaved: (name) => useDialogs.getState().ask(name),
+    confirmForkClose: (name, canReplace) => useDialogs.getState().askForkClose(name, canReplace),
+    confirmOverwrite: (name) =>
+      useDialogs.getState().askConfirm({ title: t('forkOverwriteTitle', { name }), body: t('forkOverwriteBody'), okLabel: t('forkOverwriteOk') }),
     notify: (toast) => useToasts.getState().push(toast),
     onFileOpened: (path) => useWorkspace.getState().addRecent(path),
     buildExport: buildExportHtml

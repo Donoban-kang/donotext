@@ -39,6 +39,44 @@ export function ConfirmUnsavedDialog(): React.ReactElement | null {
   )
 }
 
+export function ForkCloseDialog(): React.ReactElement | null {
+  const state = useDialogs((s) => s.forkClose)
+  const answer = useDialogs((s) => s.answerForkClose)
+  const first = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (state) first.current?.focus()
+  }, [state])
+  if (!state) return null
+  return (
+    <div className="dn-modal-backdrop">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dn-fork-title"
+        className="dn-modal"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') answer('cancel')
+        }}
+      >
+        <h2 id="dn-fork-title">{t('forkCloseTitle', { name: state.name })}</h2>
+        <p>{t('forkCloseBody')}</p>
+        <div className="dn-modal-actions dn-modal-actions-wrap">
+          <button ref={first} onClick={() => answer('saveAs')}>
+            {t('forkSaveAs')}
+          </button>
+          {state.canReplace && (
+            <button className="dn-danger" onClick={() => answer('replace')}>
+              {t('forkReplace')}
+            </button>
+          )}
+          <button onClick={() => answer('discard')}>{t('discard')}</button>
+          <button onClick={() => answer('cancel')}>{t('cancel')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ConfirmDialog(): React.ReactElement | null {
   const state = useDialogs((s) => s.confirm)
   const answer = useDialogs((s) => s.answerConfirm)

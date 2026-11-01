@@ -1,5 +1,11 @@
 export type Tab =
-  | { kind: 'doc'; docId: string; view: 'wysiwyg' | 'source' }
+  | {
+      kind: 'doc'
+      docId: string
+      view: 'wysiwyg' | 'source'
+      /** Set when the tab was repointed to a copy, so its editor stays mounted (and keeps focus) while typing. */
+      key?: string
+    }
   | { kind: 'compare'; leftDocId: string; rightDocId: string }
 
 export interface Leaf {

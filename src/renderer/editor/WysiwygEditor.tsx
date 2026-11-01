@@ -15,6 +15,7 @@ import { typewriterScrollDelta } from './typewriter'
 import { FindPanel } from './FindPanel'
 import { SearchReplace } from './findReplace'
 import { getExtensions } from './markdown/extensions'
+import { commitEdit } from './editRouter'
 import { merge3 } from './merge3'
 import { createDebouncer, EDIT_DEBOUNCE_MS, registerFlusher, shouldApplyRemote } from './sync'
 import 'katex/dist/katex.min.css'
@@ -34,6 +35,9 @@ export interface WysiwygEditorProps {
 
 export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.ReactElement {
   const readOnly = useDocuments((s) => s.docs[docId]?.readOnly ?? false)
+  // The pane can be switched to an edited copy while typing; the closures below must follow it.
+  const docIdRef = useRef(docId)
+  docIdRef.current = docId
   const focusMode = useSettings((s) => s.focusMode)
   const typewriterMode = useSettings((s) => s.typewriterMode)
   const composing = useRef(false)
@@ -46,7 +50,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
   const editorRef = useRef<Editor | null>(null)
 
   const insertImages = async (files: File[]): Promise<void> => {
-    const doc = useDocuments.getState().docs[docId]
+    const doc = useDocuments.getState().docs[docIdRef.current]
     if (!doc?.path) {
       useToasts.getState().push({ kind: 'warning', message: t('imageNeedsSave') })
       return
@@ -67,7 +71,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     extensions: [
       ...getExtensions().map((ext) =>
         ext.name === 'image'
-          ? ImageDisplay.configure({ getBaseDir: () => docDirOf(useDocuments.getState().docs[docId]?.path ?? null) })
+          ? ImageDisplay.configure({ getBaseDir: () => docDirOf(useDocuments.getState().docs[docIdRef.current]?.path ?? null) })
           : ext
       ),
       SearchReplace.configure({ onOpen: (m) => setFindMode(m) }),
@@ -82,11 +86,11 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
         // Half-composed syllables are not pushed to other panes; finishComposition() sends the result.
         if (composing.current && !forcing.current) return
         const next = serializeMarkdown(ed.getJSON())
-        const d = useDocuments.getState().docs[docId]
+        const d = useDocuments.getState().docs[docIdRef.current]
         // Loading can make the editor touch its document (e.g. add a trailing paragraph). That is not
         // an edit: an untouched file must keep its exact original text.
         if (d && d.text === d.baseline && next === d.baselineNormalized) return
-        useDocuments.getState().setText(docId, next, paneId)
+        docIdRef.current = commitEdit(docIdRef.current, next, paneId)
       })
     },
     editorProps: {
@@ -101,7 +105,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
       handleDOMEvents: {
         compositionstart: () => {
           composing.current = true
-          compositionBase.current = useDocuments.getState().docs[docId]?.text ?? ''
+          compositionBase.current = useDocuments.getState().docs[docIdRef.current]?.text ?? ''
           return false
         },
         compositionend: () => {
@@ -134,7 +138,7 @@ export function WysiwygEditor({ docId, paneId }: WysiwygEditorProps): React.Reac
     if (merged === null) useToasts.getState().push({ kind: 'warning', message: t('mergeConflict') })
     debouncer.current.cancel()
     if (text !== local) applyRemote(text)
-    useDocuments.getState().setText(docId, text, paneId)
+    docIdRef.current = commitEdit(docIdRef.current, text, paneId)
   }
 
   const applyRemote = (text: string): void => {

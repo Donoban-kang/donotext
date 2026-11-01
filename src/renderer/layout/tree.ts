@@ -155,6 +155,15 @@ export function openTab(root: LayoutNode, leafId: string, tab: Tab): LayoutNode 
   })
 }
 
+/** Points the tab at another document (an edited copy). `key` keeps its editor mounted across the switch. */
+export function repointDoc(root: LayoutNode, leafId: string, index: number, docId: string, key: string): LayoutNode {
+  return updateLeaf(root, leafId, (l) => {
+    const tab = l.tabs[index]
+    if (!tab || tab.kind !== 'doc' || tab.docId === docId) return l
+    return { ...l, tabs: l.tabs.map((t, i) => (i === index ? { ...tab, docId, key: tab.key ?? key } : t)) }
+  })
+}
+
 function withoutTab(l: Leaf, index: number): Leaf {
   const tabs = l.tabs.filter((_, i) => i !== index)
   let active = l.active

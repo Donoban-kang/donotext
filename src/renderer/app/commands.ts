@@ -8,6 +8,9 @@ import { t } from './i18n'
 
 export type UnsavedChoice = 'save' | 'discard' | 'cancel'
 
+/** What to do with an edited copy when its tab is closed. */
+export type ForkChoice = 'saveAs' | 'replace' | 'discard' | 'cancel'
+
 export interface Toast {
   kind: 'error' | 'warning' | 'info'
   message: string
@@ -18,6 +21,10 @@ export interface CommandDeps {
   documents: ReturnType<typeof createDocumentsStore>
   layout: ReturnType<typeof createLayoutStore>
   confirmUnsaved(name: string): Promise<UnsavedChoice>
+  /** Asked when the last tab of an edited copy ("수정본") closes. Defaults to cancelling. */
+  confirmForkClose?(name: string, canReplace: boolean): Promise<ForkChoice>
+  /** Last warning before an original file is overwritten. Defaults to refusing. */
+  confirmOverwrite?(name: string): Promise<boolean>
   notify(toast: Toast): void
   /** Pushes pending editor edits into the document store; defaults to the editor registry. */
   flush?: () => void
@@ -55,9 +62,16 @@ export function createCommands(deps: CommandDeps) {
     flush()
     const d = docs().docs[docId]
     if (!d) return false
-    if (forceDialog || !d.path || d.readOnly) {
+    // An edited copy never writes to the original on a plain save: it always asks for a new name.
+    const isCopy = d.fork === true
+    if (isCopy && !forceDialog) notify({ kind: 'info', message: t('forkSaveHint') })
+    if (forceDialog || !d.path || d.readOnly || isCopy) {
       const path = await api.saveAsDialog(d.name)
       if (!path) return false
+      if (isCopy && d.path !== null && samePath(path, d.path)) {
+        notify({ kind: 'error', message: t('forkSameFile') })
+        return false
+      }
       // The text of a file that was not valid UTF-8 is lossy: writing it back would destroy the original.
       if (d.warning === 'notUtf8' && d.path !== null && samePath(path, d.path)) {
         notify({ kind: 'error', message: t('refuseLossyOverwrite') })
@@ -121,13 +135,43 @@ export function createCommands(deps: CommandDeps) {
   }
 
   async function saveActive(): Promise<boolean> {
+    flush() // typing in a shared pane may switch it to its own copy; the active document is the copy then
     const id = activeDocId()
     return id ? saveDoc(id) : false
   }
 
   async function saveAsActive(): Promise<boolean> {
+    flush()
     const id = activeDocId()
     return id ? saveDoc(id, true) : false
+  }
+
+  /** Overwrites the original file with an edited copy's text. Returns false when cancelled or it failed. */
+  async function replaceOriginal(docId: string): Promise<boolean> {
+    flush()
+    const d = docs().docs[docId]
+    if (!d || d.path === null) return false
+    if (d.warning === 'notUtf8') {
+      notify({ kind: 'error', message: t('refuseLossyOverwrite') })
+      return false
+    }
+    if (!(await (deps.confirmOverwrite?.(d.name) ?? Promise.resolve(false)))) return false
+    try {
+      await api.writeFile(d.path, d.text, d.eol, d.bom)
+    } catch (e) {
+      notify({ kind: 'error', message: t('saveFailed', { name: d.name, reason: reason(e) }) })
+      return false
+    }
+    // An open original now shows the new content.
+    for (const o of Object.values(docs().docs)) {
+      if (o.fork || o.id === docId || o.path === null || !samePath(o.path, d.path)) continue
+      try {
+        docs().reload(o.id, await api.readFile(d.path))
+      } catch {
+        // the file watcher reports it if it really is unreadable
+      }
+    }
+    return true
   }
 
   async function closeTab(leafId: string, index: number): Promise<boolean> {
@@ -138,6 +182,15 @@ export function createCommands(deps: CommandDeps) {
     for (const id of ids) {
       // Only ask when this tab is the last view of a modified document.
       if (lay().docRefs(id) > 1 || !docs().isDirty(id)) continue
+      const copy = docs().docs[id]
+      if (copy?.fork) {
+        const canReplace = copy.path !== null && copy.warning !== 'notUtf8'
+        const pick = await (deps.confirmForkClose?.(copy.name, canReplace) ?? Promise.resolve<ForkChoice>('cancel'))
+        if (pick === 'cancel') return false
+        if (pick === 'saveAs' && !(await saveDoc(id, true))) return false
+        if (pick === 'replace' && !(await replaceOriginal(id))) return false
+        continue
+      }
       const choice = await confirmUnsaved(docs().docs[id].name)
       if (choice === 'cancel') return false
       if (choice === 'save' && !(await saveDoc(id))) return false
@@ -154,6 +207,7 @@ export function createCommands(deps: CommandDeps) {
 
   /** Exports the active document as a standalone HTML file or a PDF. Resolves to the file path, or null. */
   async function exportActive(kind: 'html' | 'pdf'): Promise<string | null> {
+    flush()
     const id = activeDocId()
     const first = id ? docs().docs[id] : undefined
     if (!id || !first || first.sourceOnly || !deps.buildExport) {
@@ -253,7 +307,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc }
+  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc, replaceOriginal }
 }
 
 export type Commands = ReturnType<typeof createCommands>

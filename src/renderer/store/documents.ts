@@ -18,6 +18,10 @@ export interface Doc {
   warning: Warning | null
   version: number
   external: 'none' | 'changed' | 'deleted'
+  /** An edited copy of a file ("수정본"): never written to the original path except by an explicit replace. */
+  fork?: boolean
+  /** Id of the document this copy was split off from. */
+  forkOf?: string
 }
 
 export type TextListener = (text: string, origin: string) => void
@@ -26,6 +30,10 @@ export interface DocumentsState {
   docs: Record<string, Doc>
   open(r: ReadResult): string
   openUntitled(): string
+  /** Splits an edited copy off a document; the copy starts with the same text and the same saved baseline. */
+  forkDoc(id: string): string | null
+  /** Opens a file's current content as a copy (session restore). */
+  openFork(r: ReadResult): string
   setText(id: string, text: string, origin: string): void
   /** `writtenText` is what actually reached the disk; edits made while the write ran stay unsaved. */
   markSaved(id: string, path?: string, writtenText?: string): void
@@ -70,7 +78,7 @@ export function createDocumentsStore() {
     docs: {},
 
     open(r) {
-      const existing = Object.values(get().docs).find((d) => d.path === r.path)
+      const existing = Object.values(get().docs).find((d) => !d.fork && d.path === r.path)
       if (existing) return existing.id
       const id = `doc-${run}-${++counter}`
       const sourceOnly = r.kind === 'sourceOnly'
@@ -114,6 +122,38 @@ export function createDocumentsStore() {
       return id
     },
 
+    forkDoc(id) {
+      const src = get().docs[id]
+      if (!src) return null
+      const copyId = `doc-${run}-${++counter}`
+      const copy: Doc = { ...src, id: copyId, fork: true, forkOf: src.forkOf ?? src.id, version: 0, external: 'none' }
+      set((s) => ({ docs: { ...s.docs, [copyId]: copy } }))
+      return copyId
+    },
+
+    openFork(r) {
+      const id = `doc-${run}-${++counter}`
+      const sourceOnly = r.kind === 'sourceOnly'
+      const doc: Doc = {
+        id,
+        path: r.path,
+        name: baseName(r.path),
+        text: r.text,
+        baseline: r.text,
+        baselineNormalized: normalizedBaseline(r.text, sourceOnly),
+        eol: r.eol,
+        bom: r.bom,
+        readOnly: r.readOnly,
+        sourceOnly,
+        warning: r.warning ?? null,
+        version: 0,
+        external: 'none',
+        fork: true
+      }
+      set((s) => ({ docs: { ...s.docs, [id]: doc } }))
+      return id
+    },
+
     setText(id, text, origin) {
       const doc = get().docs[id]
       if (!doc || doc.readOnly || doc.text === text) return
@@ -129,6 +169,9 @@ export function createDocumentsStore() {
       if (path) {
         next.path = path
         next.name = baseName(path)
+        // A copy saved under its own name is an ordinary document from now on.
+        delete next.fork
+        delete next.forkOf
         // Saving under a new path writes valid UTF-8, so a read-only/lossy document becomes editable.
         next.readOnly = false
         next.warning = null

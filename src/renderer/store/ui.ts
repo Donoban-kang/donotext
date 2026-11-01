@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Toast, UnsavedChoice } from '../app/commands'
+import type { ForkChoice, Toast, UnsavedChoice } from '../app/commands'
 
 export interface ConfirmOptions {
   title: string
@@ -17,6 +17,9 @@ interface DialogState {
   ask(name: string): Promise<UnsavedChoice>
   answer(choice: UnsavedChoice): void
   askConfirm(opts: ConfirmOptions): Promise<boolean>
+  forkClose: { name: string; canReplace: boolean; resolve: (c: ForkChoice) => void } | null
+  askForkClose(name: string, canReplace: boolean): Promise<ForkChoice>
+  answerForkClose(choice: ForkChoice): void
   answerConfirm(ok: boolean): void
 }
 
@@ -27,6 +30,16 @@ export const useDialogs = create<DialogState>()((set, get) => ({
   setHelpOpen: (open) => set({ helpOpen: open }),
   unsaved: null,
   confirm: null,
+  forkClose: null,
+  askForkClose(name, canReplace) {
+    get().forkClose?.resolve('cancel')
+    return new Promise<ForkChoice>((resolve) => set({ forkClose: { name, canReplace, resolve } }))
+  },
+  answerForkClose(choice) {
+    const cur = get().forkClose
+    set({ forkClose: null })
+    cur?.resolve(choice)
+  },
   askConfirm(opts) {
     get().confirm?.resolve(false)
     return new Promise<boolean>((resolve) => set({ confirm: { ...opts, resolve } }))
