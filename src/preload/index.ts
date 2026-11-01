@@ -1,5 +1,22 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC, type DonotextApi, type FileChange } from '../shared/ipc'
+
+/**
+ * Paths of the latest drop from the file manager. Only a real (trusted) drop event is recorded, and the path
+ * is read here, in the preload, so page scripts cannot name arbitrary files; they can only open what the user dropped.
+ */
+let lastDrop: { paths: string[]; at: number } | null = null
+window.addEventListener(
+  'drop',
+  (e) => {
+    if (!e.isTrusted) return
+    const paths = Array.from(e.dataTransfer?.files ?? [])
+      .map((f) => webUtils.getPathForFile(f))
+      .filter((p) => p !== '')
+    lastDrop = paths.length > 0 ? { paths, at: Date.now() } : null
+  },
+  true
+)
 
 const api: DonotextApi = {
   openFileDialog: () => ipcRenderer.invoke(IPC.openFileDialog),
@@ -29,6 +46,12 @@ const api: DonotextApi = {
   saveImage: (docPath, bytes, ext) => ipcRenderer.invoke(IPC.saveImage, docPath, bytes, ext),
   openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
   getAppInfo: () => ipcRenderer.invoke(IPC.getAppInfo),
+  takeDrop: () => {
+    const drop = lastDrop
+    lastDrop = null // one drop, one use
+    if (!drop || Date.now() - drop.at > 10_000) return Promise.resolve([])
+    return ipcRenderer.invoke(IPC.openDropped, drop.paths)
+  },
   checkForUpdate: () => ipcRenderer.invoke(IPC.checkUpdate),
   onCloseRequested: (cb) => {
     const listener = (): void => cb()

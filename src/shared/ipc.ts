@@ -1,5 +1,5 @@
 import type { AppInfo, UpdateResult } from './appInfo'
-import type { DirEntry, ReadResult } from './fsTypes'
+import type { DirEntry, DropEntry, ReadResult } from './fsTypes'
 import type { SessionData } from './session'
 import type { Eol } from './textFormat'
 
@@ -32,6 +32,7 @@ export const IPC = {
   saveImage: 'image:save',
   openExternal: 'app:openExternal',
   getAppInfo: 'app:info',
+  openDropped: 'fs:openDropped',
   checkUpdate: 'app:checkUpdate',
   requestClose: 'app:requestClose',
   closeResponse: 'app:closeResponse',
@@ -62,6 +63,11 @@ export interface DonotextApi {
   saveImage(docPath: string | null, bytes: Uint8Array, ext: string): Promise<string>
   openExternal(url: string): Promise<void>
   getAppInfo(): Promise<AppInfo>
+  /**
+   * Opens what the user just dropped on the window. The paths come from the preload script, which only
+   * accepts real (trusted) drop events, so the page cannot ask for files the user did not drop.
+   */
+  takeDrop(): Promise<DropEntry[]>
   /** One plain GET to GitHub's latest-release API; never sends document content. */
   checkForUpdate(): Promise<UpdateResult>
   /** The window is about to close; answer with respondToClose(true) to allow it. */

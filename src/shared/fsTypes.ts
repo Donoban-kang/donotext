@@ -18,3 +18,9 @@ export interface DirEntry {
   path: string
   isDir: boolean
 }
+
+/** What happened to one item dropped onto the window from the file manager. */
+export type DropEntry =
+  | { kind: 'file'; result: ReadResult }
+  | { kind: 'folder'; root: string }
+  | { kind: 'rejected'; name: string; reason: 'binary' | 'tooLarge' | 'unreadable' }

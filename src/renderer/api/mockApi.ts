@@ -1,6 +1,6 @@
 import type { UpdateResult } from '../../shared/appInfo'
 import { classifyPath } from '../../shared/fileKind'
-import type { DirEntry, ReadResult } from '../../shared/fsTypes'
+import type { DirEntry, DropEntry, ReadResult } from '../../shared/fsTypes'
 import { IMAGE_EXTENSIONS, type DonotextApi, type FileChange } from '../../shared/ipc'
 import type { SessionData } from '../../shared/session'
 import type { Eol } from '../../shared/textFormat'
@@ -25,6 +25,8 @@ export interface MockController {
   queueInitialOpenPaths(paths: string[]): void
   /** Answers the renderer gave to close requests, in order. */
   closeResponses: boolean[]
+  /** Paths the next drop from the file manager will carry (the mock has no real paths to read). */
+  queueDrop(paths: string[]): void
   /** What the next "check for updates" will report. */
   setUpdateResult(r: UpdateResult): void
   /** URLs the app asked to open in the browser, in order. */
@@ -61,6 +63,7 @@ export function createMockApi(
   let initialOpenPaths: string[] = [...(initial.openPaths ?? [])]
   let nextUpdate: UpdateResult = { status: 'latest', current: '0.0.0-dev', latest: '0.0.0-dev' }
   const externalUrls: string[] = []
+  let queuedDrop: string[] = []
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
 
@@ -196,6 +199,23 @@ export function createMockApi(
       initialOpenPaths = []
       return out
     },
+    async takeDrop() {
+      const paths = queuedDrop
+      queuedDrop = []
+      const out: DropEntry[] = []
+      for (const path of paths) {
+        const name = path.slice(path.lastIndexOf('/') + 1)
+        const stored = files.get(path)
+        if (stored) {
+          out.push(stored.text.includes('\u0000') ? { kind: 'rejected', name, reason: 'binary' } : { kind: 'file', result: toResult(path) })
+        } else if ([...files.keys()].some((f) => f.startsWith(path + '/'))) {
+          out.push({ kind: 'folder', root: path })
+        } else {
+          out.push({ kind: 'rejected', name, reason: 'unreadable' })
+        }
+      }
+      return out
+    },
     async getAppInfo() {
       return { name: 'donotext', version: '0.0.0-dev', author: 'Donoban-kang', repoUrl: 'https://github.com/Donoban-kang/donotext', releasesUrl: 'https://github.com/Donoban-kang/donotext/releases' }
     },
@@ -224,6 +244,9 @@ export function createMockApi(
     closeResponses,
     requestClose: () => closeListeners.forEach((l) => l()),
     pushOpenPaths: (paths) => openPathListeners.forEach((l) => l(paths)),
+    queueDrop: (paths) => {
+      queuedDrop = paths
+    },
     setUpdateResult: (r) => {
       nextUpdate = r
     },

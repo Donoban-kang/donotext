@@ -6,6 +6,7 @@ import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
 import type { ImageService } from './services/imageService'
 import type { SessionService } from './services/sessionService'
+import { openDropped } from './services/dropService'
 import { checkForUpdate, type FetchLike } from './services/updateService'
 import type { WatchService } from './services/watchService'
 
@@ -79,6 +80,7 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
   })
 
   ipcMain.handle(IPC.getAppInfo, (): AppInfo => ({ name: APP_NAME, version: app.getVersion(), author: AUTHOR, repoUrl: REPO_URL, releasesUrl: RELEASES_URL }))
+  ipcMain.handle(IPC.openDropped, (_e, paths) => openDropped(paths, fs, (p) => sessions.grant(p)))
   ipcMain.handle(IPC.checkUpdate, () => checkForUpdate(app.getVersion(), net.fetch as unknown as FetchLike))
 
   ipcMain.on(IPC.watch, (_e, paths: unknown) => {

@@ -197,3 +197,9 @@ body {
 .dn-chip-mode > * { grid-area: 1 / 1; }
 .dn-chip-sizer { display: grid; visibility: hidden; height: 0; overflow: hidden; }
 .dn-chip-sizer > * { grid-area: 1 / 1; }
+
+/* ---------- Drop files from the file manager ---------- */
+.dn-drop-overlay { position: fixed; inset: 8px; z-index: 80; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--dn-accent); border-radius: 16px; background: color-mix(in srgb, var(--dn-accent-soft) 82%, transparent); pointer-events: none; }
+.dn-drop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 28px; border-radius: 14px; background: var(--dn-surface); box-shadow: var(--dn-shadow); color: var(--dn-text); }
+.dn-drop-card strong { font-size: 18px; }
+.dn-drop-card span { color: var(--dn-sub); font-size: 13px; }

@@ -11,6 +11,7 @@ import { useLayout } from '../store/layoutStore'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
 import { useDialogs } from '../store/ui'
+import { DropZone } from './DropZone'
 import { FormatMenu } from './FormatMenu'
 import { HelpDialog } from './HelpDialog'
 import { CompareDialog, ConfirmDialog, ConfirmUnsavedDialog, ForkCloseDialog, LinkDialog, Toasts } from './Overlays'
@@ -185,6 +186,7 @@ export function App(): React.ReactElement {
           <SplitView node={root} />
         </main>
       </div>
+      <DropZone />
       <ThemeController />
       <ScrollLinkController />
       <ConfirmUnsavedDialog />

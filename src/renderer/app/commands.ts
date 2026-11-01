@@ -1,4 +1,4 @@
-import type { ReadResult } from '../../shared/fsTypes'
+import type { DropEntry, ReadResult } from '../../shared/fsTypes'
 import type { DonotextApi } from '../../shared/ipc'
 import { flushAllEditors } from '../editor/sync'
 import { allLeaves, findLeaf } from '../layout/tree'
@@ -30,6 +30,8 @@ export interface CommandDeps {
   flush?: () => void
   /** Called with the path of every file that was opened (recent-files list). */
   onFileOpened?: (path: string) => void
+  /** Shows a dropped folder in the sidebar. */
+  openFolder?(root: string): void
   /** Builds the sanitized HTML document for an export (needs a DOM, so it is injected). */
   buildExport?: (markdown: string, title: string) => string
 }
@@ -199,6 +201,49 @@ export function createCommands(deps: CommandDeps) {
     return true
   }
 
+  /** An empty, never-saved "제목 없음" document the user has not typed into: safe to swap for a dropped file. */
+  function untitledPlaceholder(leafId: string): { docId: string } | null {
+    const leaf = findLeaf(lay().root, leafId)
+    const tab = leaf?.tabs[leaf.active]
+    if (tab?.kind !== 'doc') return null
+    const d = docs().docs[tab.docId]
+    return d && d.path === null && !d.fork && d.text === '' && !docs().isDirty(d.id) && lay().docRefs(d.id) === 1 ? { docId: d.id } : null
+  }
+
+  /**
+   * Opens what was just dropped on the window: files become tabs in the pane they were dropped on, a
+   * folder opens in the sidebar, and binary or oversized files are refused with a short notice.
+   */
+  async function openDropped(leafId?: string): Promise<void> {
+    if (leafId) lay().focusLeaf(leafId)
+    let entries: DropEntry[]
+    try {
+      entries = await api.takeDrop()
+    } catch (e) {
+      notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
+      return
+    }
+    flush() // text typed a moment ago must count: an untitled document with typing in it is never swapped out
+    const target = lay().activeLeafId
+    const placeholder = untitledPlaceholder(target)
+    const results: ReadResult[] = []
+    for (const entry of entries) {
+      if (entry.kind === 'file') results.push(entry.result)
+      else if (entry.kind === 'folder') deps.openFolder?.(entry.root)
+      else {
+        const key = entry.reason === 'binary' ? 'dropBinary' : entry.reason === 'tooLarge' ? 'dropTooLarge' : 'dropUnreadable'
+        notify({ kind: 'warning', message: t(key, { name: entry.name }) })
+      }
+    }
+    if (results.length === 0) return
+    showResults(results)
+    if (placeholder) {
+      const leaf = findLeaf(lay().root, target)
+      const at = leaf?.tabs.findIndex((x) => x.kind === 'doc' && x.docId === placeholder.docId) ?? -1
+      if (at >= 0 && leaf && leaf.tabs.length > 1) removeTab(target, at, [placeholder.docId])
+    }
+  }
+
   function removeTab(leafId: string, index: number, ids: string[]): void {
     lay().closeTabAt(leafId, index)
     for (const id of ids) if (lay().docRefs(id) === 0) docs().close(id)
@@ -325,7 +370,7 @@ export function createCommands(deps: CommandDeps) {
     lay().setTabView(a.leafId, a.index, a.tab.view === 'wysiwyg' ? 'source' : 'wysiwyg')
   }
 
-  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc, replaceOriginal, replaceAndClose }
+  return { openFile, openPath, exportActive, confirmQuit, reloadFromDisk, keepLocal, splitActive, closePane, compareDocs, focusPane, toggleScrollLink, newUntitled, saveActive, saveAsActive, closeTab, closeActiveTab, toggleView, saveDoc, replaceOriginal, replaceAndClose, openDropped }
 }
 
 export type Commands = ReturnType<typeof createCommands>

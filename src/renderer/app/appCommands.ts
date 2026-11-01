@@ -20,6 +20,7 @@ export function getCommands(): Commands {
       useDialogs.getState().askConfirm({ title: t('forkOverwriteTitle', { name }), body: t('forkOverwriteBody'), okLabel: t('forkOverwriteOk') }),
     notify: (toast) => useToasts.getState().push(toast),
     onFileOpened: (path) => useWorkspace.getState().addRecent(path),
+    openFolder: (root) => useWorkspace.getState().setRoot(root),
     buildExport: buildExportHtml
   })
   return instance
