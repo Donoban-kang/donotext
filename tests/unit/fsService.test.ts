@@ -178,3 +178,51 @@ describe('very large files', () => {
   })
 })
 
+
+describe('file encodings on disk', () => {
+  const utf16le = (s: string): Buffer => Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(s, 'utf16le')])
+
+  it('opens a UTF-16 file as readable text and saves it back as UTF-16 with its byte order mark', async () => {
+    const p = join(dir, 'eula.txt')
+    await writeFile(p, utf16le('You have received it.\r\n한글 가나다\r\n'))
+    fsvc.grant(p)
+    const r = await fsvc.readFile(p)
+    expect(r).toMatchObject({ text: 'You have received it.\n한글 가나다\n', encoding: 'utf-16le', bom: true, eol: 'crlf', readOnly: false })
+    expect(r.warning).toBeUndefined()
+    await fsvc.writeFile(p, r.text + 'more\n', r.eol, r.bom, r.encoding)
+    const bytes = await readFile(p)
+    expect(Array.from(bytes.subarray(0, 2))).toEqual([0xff, 0xfe])
+    expect(bytes.subarray(2).toString('utf16le')).toBe('You have received it.\r\n한글 가나다\r\nmore\r\n')
+  })
+
+  it('opens a CP949 Korean text file editable and keeps it CP949 when saved', async () => {
+    const p = join(dir, 'korean.txt')
+    const original = Buffer.from([0xbe, 0xc8, 0xb3, 0xe7, 0x0d, 0x0a])
+    await writeFile(p, original)
+    fsvc.grant(p)
+    const r = await fsvc.readFile(p)
+    expect(r).toMatchObject({ text: '안녕\n', encoding: 'cp949', readOnly: false })
+    expect(r.warning).toBeUndefined()
+    await fsvc.writeFile(p, r.text, r.eol, r.bom, r.encoding)
+    expect(Array.from(await readFile(p))).toEqual(Array.from(original))
+  })
+
+  it('refuses to save text CP949 cannot hold and leaves the file untouched', async () => {
+    const p = join(dir, 'korean.txt')
+    const original = Buffer.from([0xbe, 0xc8, 0xb3, 0xe7, 0x0d, 0x0a])
+    await writeFile(p, original)
+    fsvc.grant(p)
+    await expect(fsvc.writeFile(p, '안녕 😀', 'crlf', false, 'cp949')).rejects.toThrow(/CP949/)
+    expect(Array.from(await readFile(p))).toEqual(Array.from(original))
+  })
+
+  it('a UTF-8 file is still read and written as before', async () => {
+    const p = join(dir, 'plain.md')
+    await writeFile(p, '안녕\n')
+    fsvc.grant(p)
+    const r = await fsvc.readFile(p)
+    expect(r.encoding).toBe('utf-8')
+    await fsvc.writeFile(p, r.text, r.eol, r.bom)
+    expect((await readFile(p)).toString('utf8')).toBe('안녕\n')
+  })
+})

@@ -69,6 +69,16 @@ describe('openDropped', () => {
     expect(await openDropped(many, fs, grant)).toHaveLength(50)
   })
 
+  it('accepts UTF-16 text and CP949 Korean text, which contain bytes that look binary', async () => {
+    const u16 = join(dir, 'eula.txt')
+    const kr = join(dir, 'korean.txt')
+    await writeFile(u16, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('License terms\r\n한글\r\n', 'utf16le')]))
+    await writeFile(kr, Buffer.from([0xbe, 0xc8, 0xb3, 0xe7, 0x0d, 0x0a]))
+    const out = await openDropped([u16, kr], fs, grant)
+    expect(out[0]).toMatchObject({ kind: 'file', result: { text: 'License terms\n한글\n', encoding: 'utf-16le', readOnly: false } })
+    expect(out[1]).toMatchObject({ kind: 'file', result: { text: '안녕\n', encoding: 'cp949', readOnly: false } })
+  })
+
   it('an empty file is an ordinary text file', async () => {
     const f = join(dir, 'empty.txt')
     await writeFile(f, '')

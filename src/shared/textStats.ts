@@ -1,4 +1,4 @@
-import { encodeText, type Eol } from './textFormat'
+import { encodedLength, type Encoding, type Eol } from './textFormat'
 
 export interface TextStats {
   words: number
@@ -21,7 +21,7 @@ function countCodePoints(s: string): number {
  * Counts what a writer expects to see: a "word" is a whitespace-separated piece that contains a letter
  * or digit (so a lone `#` or `---` does not count); a paragraph is a block of text between blank lines.
  */
-export function computeStats(text: string, eol: Eol, bom: boolean): TextStats {
+export function computeStats(text: string, eol: Eol, bom: boolean, encoding: Encoding = 'utf-8'): TextStats {
   let words = 0
   for (const token of text.split(/\s+/)) if (/[\p{L}\p{N}]/u.test(token)) words++
   const paragraphs = text.split(/\n[ \t]*\n/).filter((p) => p.trim() !== '').length
@@ -30,7 +30,7 @@ export function computeStats(text: string, eol: Eol, bom: boolean): TextStats {
     chars: countCodePoints(text.replace(/\s/g, '')),
     charsWithSpaces: countCodePoints(text),
     paragraphs,
-    bytes: encodeText(text, eol, bom).length
+    bytes: encodedLength(text, eol, bom, encoding)
   }
 }
 

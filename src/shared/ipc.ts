@@ -1,7 +1,7 @@
 import type { AppInfo, UpdateResult } from './appInfo'
 import type { DirEntry, DropEntry, ReadResult } from './fsTypes'
 import type { SessionData } from './session'
-import type { Eol } from './textFormat'
+import type { Encoding, Eol } from './textFormat'
 
 export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'] as const
 
@@ -45,7 +45,7 @@ export interface DonotextApi {
   openFolderDialog(): Promise<{ root: string; entries: DirEntry[] } | null>
   saveAsDialog(suggestedName?: string): Promise<string | null>
   readFile(path: string): Promise<ReadResult>
-  writeFile(path: string, text: string, eol: Eol, bom: boolean): Promise<void>
+  writeFile(path: string, text: string, eol: Eol, bom: boolean, encoding?: Encoding): Promise<void>
   readDir(path: string): Promise<DirEntry[]>
   createEntry(parent: string, name: string, isDir: boolean): Promise<string>
   renameEntry(path: string, newName: string): Promise<string>

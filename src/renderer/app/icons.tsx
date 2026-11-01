@@ -18,6 +18,7 @@ const PATHS = {
   trash: 'M3.5 4.5h9M6.5 4.5V3h3v1.5M5 4.5l.5 8h5l.5-8',
   help: 'M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM6.3 6.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M8 11.6v.1',
   settings: 'M3 4.5h6M11.5 4.5H13M3 11.5h1.5M7 11.5h6M9 3v3M6 10v3',
+  download: 'M4 2.5h5l3 3v8H4zM9 2.5v3h3M8 7v3.4M6.4 9l1.6 1.6L9.6 9',
   chevron: 'M6 4l4 4-4 4',
 } as const
 

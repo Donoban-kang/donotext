@@ -1,19 +1,20 @@
 import { open, stat } from 'node:fs/promises'
 import { basename, isAbsolute } from 'node:path'
 import type { DropEntry } from '../../shared/fsTypes'
+import { looksLikeText } from '../../shared/textFormat'
 import type { FsService } from './fsService'
 
 const MAX_ITEMS = 50
 const MAX_PATH = 4096
 const SNIFF_BYTES = 8192
 
-/** A file with NUL bytes near the start is binary (images, executables, UTF-16 text). */
+/** A file with NUL bytes near the start is binary (images, executables) unless the NULs are UTF-16 text's. */
 async function looksBinary(path: string): Promise<boolean> {
   const handle = await open(path, 'r')
   try {
     const buf = Buffer.alloc(SNIFF_BYTES)
     const { bytesRead } = await handle.read(buf, 0, SNIFF_BYTES, 0)
-    return buf.subarray(0, bytesRead).includes(0)
+    return !looksLikeText(buf.subarray(0, bytesRead))
   } finally {
     await handle.close()
   }

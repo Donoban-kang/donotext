@@ -12,6 +12,7 @@ const doc = (over: Partial<Doc> = {}): Doc => ({
   baselineNormalized: 'v1',
   eol: 'lf',
   bom: false,
+  encoding: 'utf-8',
   readOnly: false,
   sourceOnly: false,
   warning: null,

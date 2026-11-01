@@ -195,11 +195,16 @@ body {
 .dn-chip-sizer { display: grid; visibility: hidden; height: 0; overflow: hidden; }
 .dn-chip-sizer > * { grid-area: 1 / 1; }
 
-/* ---------- Drop files from the file manager ---------- */
-.dn-drop-overlay { position: fixed; inset: 8px; z-index: 80; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--dn-accent); border-radius: 16px; background: color-mix(in srgb, var(--dn-accent-soft) 82%, transparent); pointer-events: none; }
-.dn-drop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 28px; border-radius: 14px; background: var(--dn-surface); box-shadow: var(--dn-shadow); color: var(--dn-text); }
-.dn-drop-card strong { font-size: 18px; }
-.dn-drop-card span { color: var(--dn-sub); font-size: 13px; }
+/* ---------- Drop files from the file manager (the panel looks like MarkText's import panel) ---------- */
+.dn-drop-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(8, 12, 28, .5); pointer-events: none; }
+.dn-drop-panel { width: min(540px, calc(100vw - 48px)); padding: 18px; border-radius: 16px; background: color-mix(in srgb, var(--dn-accent) 72%, #1b2250); box-shadow: 0 16px 48px rgba(0, 0, 0, .4); color: #fff; }
+.dn-drop-frame { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 30px 16px; border: 1.5px dashed rgba(255, 255, 255, .75); border-radius: 10px; text-align: center; }
+.dn-drop-frame .dn-icon { width: 46px; height: 46px; stroke-width: 1.3; }
+.dn-drop-frame strong { font-size: 16px; font-weight: 600; }
+.dn-drop-frame span { font-size: 14px; opacity: .92; }
+.dn-drop-badges { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
+.dn-drop-badge { padding: 14px 4px; border: 1.5px solid rgba(255, 255, 255, .55); border-radius: 8px; text-align: center; font-size: 15px; font-weight: 600; }
+@media (max-width: 480px) { .dn-drop-badges { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---------- Settings window ---------- */
 .dn-settings { width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; outline: none; }

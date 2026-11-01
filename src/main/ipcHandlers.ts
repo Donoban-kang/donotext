@@ -64,9 +64,11 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
   })
 
   ipcMain.handle(IPC.readFile, (_e, p) => fs.readFile(str(p, 'path')))
-  ipcMain.handle(IPC.writeFile, (_e, p, text, eol, bom) => {
+  ipcMain.handle(IPC.writeFile, (_e, p, text, eol, bom, encoding) => {
     if (eol !== 'lf' && eol !== 'crlf') throw new Error('Invalid argument: eol')
-    return fs.writeFile(str(p, 'path'), str(text, 'text', Number.MAX_SAFE_INTEGER), eol, bool(bom, 'bom'))
+    const enc = encoding === undefined ? 'utf-8' : encoding
+    if (enc !== 'utf-8' && enc !== 'utf-16le' && enc !== 'utf-16be' && enc !== 'cp949') throw new Error('Invalid argument: encoding')
+    return fs.writeFile(str(p, 'path'), str(text, 'text', Number.MAX_SAFE_INTEGER), eol, bool(bom, 'bom'), enc)
   })
   ipcMain.handle(IPC.readDir, (_e, p) => fs.readDir(str(p, 'path')))
   ipcMain.handle(IPC.createEntry, (_e, parent, name, isDir) => fs.createEntry(str(parent, 'parent'), str(name, 'name', 255), bool(isDir, 'isDir')))

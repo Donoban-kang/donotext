@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ReadResult, Warning } from '../../shared/fsTypes'
 import { isSameOrInside } from '../../shared/paths'
-import type { Eol } from '../../shared/textFormat'
+import type { Encoding, Eol } from '../../shared/textFormat'
 import { t } from '../app/i18n'
 
 export interface Doc {
@@ -13,6 +13,8 @@ export interface Doc {
   baselineNormalized: string
   eol: Eol
   bom: boolean
+  /** How the file is stored on disk; saving keeps it. */
+  encoding: Encoding
   readOnly: boolean
   sourceOnly: boolean
   warning: Warning | null
@@ -91,6 +93,7 @@ export function createDocumentsStore() {
         baselineNormalized: normalizedBaseline(r.text, sourceOnly),
         eol: r.eol,
         bom: r.bom,
+        encoding: r.encoding ?? 'utf-8',
         readOnly: r.readOnly,
         sourceOnly,
         warning: r.warning ?? null,
@@ -112,6 +115,7 @@ export function createDocumentsStore() {
         baselineNormalized: '',
         eol: 'lf',
         bom: false,
+        encoding: 'utf-8',
         readOnly: false,
         sourceOnly: false,
         warning: null,
@@ -143,6 +147,7 @@ export function createDocumentsStore() {
         baselineNormalized: normalizedBaseline(r.text, sourceOnly),
         eol: r.eol,
         bom: r.bom,
+        encoding: r.encoding ?? 'utf-8',
         readOnly: r.readOnly,
         sourceOnly,
         warning: r.warning ?? null,
@@ -190,6 +195,7 @@ export function createDocumentsStore() {
         baselineNormalized: normalizedBaseline(r.text, sourceOnly),
         eol: r.eol,
         bom: r.bom,
+        encoding: r.encoding ?? 'utf-8',
         readOnly: r.readOnly,
         sourceOnly,
         warning: r.warning ?? null,

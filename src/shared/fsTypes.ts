@@ -1,5 +1,5 @@
 import type { FileKind } from './fileKind'
-import type { Eol } from './textFormat'
+import type { Encoding, Eol } from './textFormat'
 
 export type Warning = 'notUtf8' | 'tooLarge'
 
@@ -8,6 +8,8 @@ export interface ReadResult {
   text: string
   eol: Eol
   bom: boolean
+  /** Encoding the file was read in (UTF-8 when absent); saving writes it back the same way. */
+  encoding?: Encoding
   kind: FileKind
   readOnly: boolean
   warning?: Warning

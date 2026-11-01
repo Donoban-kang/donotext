@@ -2,6 +2,7 @@ import type React from 'react'
 import { useEffect, useState } from 'react'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
+import { Icon } from './icons'
 
 const carriesFiles = (e: DragEvent): boolean => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')
 
@@ -67,9 +68,20 @@ export function DropZone(): React.ReactElement | null {
   if (!over) return null
   return (
     <div className="dn-drop-overlay" data-testid="drop-overlay" aria-hidden="true">
-      <div className="dn-drop-card">
-        <strong>{t('dropHint')}</strong>
-        <span>{t('dropHintSub')}</span>
+      <div className="dn-drop-panel">
+        <div className="dn-drop-frame">
+          <Icon name="download" />
+          <strong>{t('dropTitle')}</strong>
+          <span>{t('dropHint')}</span>
+        </div>
+        <div className="dn-drop-badges">
+          {['.md', '.markdown', '.txt', '.json'].map((ext) => (
+            <span key={ext} className="dn-drop-badge">
+              {ext}
+            </span>
+          ))}
+          <span className="dn-drop-badge">{t('dropFolder')}</span>
+        </div>
       </div>
     </div>
   )

@@ -2,7 +2,7 @@ import { chmod, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writ
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, ReadResult, Warning } from '../../shared/fsTypes'
-import { decodeText, encodeText, type Eol } from '../../shared/textFormat'
+import { decodeText, encodeText, type Encoding, type Eol } from '../../shared/textFormat'
 
 export interface FsServiceOptions {
   /** Above this size a file opens source-only with a warning. */
@@ -65,6 +65,7 @@ export class FsService {
       text: decoded.text,
       eol: decoded.eol,
       bom: decoded.bom,
+      encoding: decoded.encoding,
       kind: tooLarge ? 'sourceOnly' : classifyPath(p),
       readOnly: !decoded.validUtf8
     }
@@ -73,8 +74,9 @@ export class FsService {
     return result
   }
 
-  async writeFile(path: string, text: string, eol: Eol, bom: boolean): Promise<void> {
-    await this.atomicWrite(path, encodeText(text, eol, bom))
+  async writeFile(path: string, text: string, eol: Eol, bom: boolean, encoding: Encoding = 'utf-8'): Promise<void> {
+    // Encode first: a character the file's encoding cannot hold must fail before anything is touched.
+    await this.atomicWrite(path, encodeText(text, eol, bom, encoding))
   }
 
   /** Writes raw bytes (e.g. a PDF) to an allowed path, replacing the file atomically. */

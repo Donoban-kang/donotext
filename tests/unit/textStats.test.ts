@@ -22,6 +22,14 @@ describe('computeStats', () => {
   })
 })
 
+describe('size in other encodings', () => {
+  it('counts what the file will really weigh', () => {
+    expect(computeStats('가a', 'lf', false, 'cp949').bytes).toBe(3)
+    expect(computeStats('가a', 'lf', true, 'utf-16le').bytes).toBe(6)
+    expect(computeStats('가a', 'crlf', false, 'utf-16be').bytes).toBe(4)
+  })
+})
+
 describe('formatBytes', () => {
   it('groups digits and adds KB/MB only when large enough', () => {
     expect(formatBytes(999)).toEqual({ exact: '999', approx: null })

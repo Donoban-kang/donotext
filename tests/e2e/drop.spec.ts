@@ -24,7 +24,9 @@ test('dragging files over the window shows the hint, and leaving hides it', asyn
   await openSeed(page, { '/w/a.md': '본문\n' })
   await dropFiles(page, ['/w/a.md'], '.dn-pane-body', false)
   await expect(page.getByTestId('drop-overlay')).toBeVisible()
-  await expect(page.getByTestId('drop-overlay')).toContainText('여기에 놓으면 열려요')
+  const overlay = page.getByTestId('drop-overlay')
+  await expect(overlay).toContainText('여기에 놓으면 donotext로 열려요')
+  await expect(overlay.locator('.dn-drop-badge')).toHaveText(['.md', '.markdown', '.txt', '.json', '폴더'])
   await page.evaluate(() => {
     const dt = new DataTransfer()
     dt.items.add(new File(['x'], 'a.md'))
@@ -94,4 +96,36 @@ test('moving a tab between panes is not mistaken for a file drop', async ({ page
     document.body.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true, cancelable: true }))
   })
   await expect(page.getByTestId('drop-overlay')).toHaveCount(0)
+})
+
+test('a dropped UTF-16 or CP949 text file opens editable, shows its encoding, and is saved in the same encoding', async ({ page }) => {
+  await openSeed(page, {})
+  await page.evaluate(() => {
+    window.__mock!.files.set('/w/eula.txt', { text: '라이선스 약관\n', eol: 'crlf', bom: true, encoding: 'utf-16le' })
+    window.__mock!.files.set('/w/korean.txt', { text: '안녕하세요\n', eol: 'crlf', bom: false, encoding: 'cp949' })
+  })
+  await dropFiles(page, ['/w/eula.txt', '/w/korean.txt'])
+  await expect(page.getByTestId('tab')).toHaveCount(2)
+  await expect(page.getByTestId('doc-warning')).toHaveCount(0) // no "not UTF-8, read-only" banner
+
+  const tab = (name: string) => page.getByTestId('tab').filter({ hasText: name })
+  const encodingOf = async (name: string) => {
+    await tab(name).hover()
+    const card = page.getByTestId('tab-stats')
+    await expect(card).toBeVisible()
+    const value = await card.locator('div', { hasText: '인코딩' }).locator('dd').innerText()
+    await page.mouse.move(700, 500)
+    return value
+  }
+  expect(await encodingOf('eula.txt')).toBe('UTF-16 LE (BOM)')
+  expect(await encodingOf('korean.txt')).toBe('한국어 (CP949)')
+
+  await tab('eula.txt').click()
+  await page.locator('.cm-content, .ProseMirror').first().click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('추가')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect.poll(() => page.evaluate(() => window.__mock!.files.get('/w/eula.txt')?.text)).toContain('추가')
+  const saved = await page.evaluate(() => window.__mock!.files.get('/w/eula.txt'))
+  expect([saved!.encoding, saved!.bom, saved!.eol]).toEqual(['utf-16le', true, 'crlf'])
 })

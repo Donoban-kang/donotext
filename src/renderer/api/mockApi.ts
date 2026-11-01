@@ -3,12 +3,13 @@ import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, DropEntry, ReadResult } from '../../shared/fsTypes'
 import { IMAGE_EXTENSIONS, type DonotextApi, type FileChange } from '../../shared/ipc'
 import type { SessionData } from '../../shared/session'
-import type { Eol } from '../../shared/textFormat'
+import type { Encoding, Eol } from '../../shared/textFormat'
 
 interface Stored {
   text: string
   eol: Eol
   bom: boolean
+  encoding?: Encoding
 }
 
 export interface MockController {
@@ -70,7 +71,7 @@ export function createMockApi(
   const toResult = (path: string): ReadResult => {
     const f = files.get(path)
     if (!f) throw new Error(`ENOENT: ${path}`)
-    return { path, text: f.text, eol: f.eol, bom: f.bom, kind: classifyPath(path), readOnly: false }
+    return { path, text: f.text, eol: f.eol, bom: f.bom, encoding: f.encoding ?? 'utf-8', kind: classifyPath(path), readOnly: false }
   }
 
   const listDir = (dir: string): DirEntry[] => {
@@ -111,8 +112,8 @@ export function createMockApi(
     async readFile(path) {
       return toResult(path)
     },
-    async writeFile(path, text, eol, bom) {
-      files.set(path, { text, eol, bom })
+    async writeFile(path, text, eol, bom, encoding) {
+      files.set(path, { text, eol, bom, encoding })
     },
     async readDir(path) {
       return listDir(path)

@@ -50,7 +50,7 @@ export function createCommands(deps: CommandDeps) {
     const d = docs().docs[docId]
     if (!d) return false
     try {
-      await api.writeFile(path, d.text, d.eol, d.bom)
+      await api.writeFile(path, d.text, d.eol, d.bom, d.encoding)
     } catch (e) {
       notify({ kind: 'error', message: t('saveFailed', { name: d.name, reason: reason(e) }) })
       return false
@@ -159,7 +159,7 @@ export function createCommands(deps: CommandDeps) {
     }
     if (!(await (deps.confirmOverwrite?.(d.name) ?? Promise.resolve(false)))) return false
     try {
-      await api.writeFile(d.path, d.text, d.eol, d.bom)
+      await api.writeFile(d.path, d.text, d.eol, d.bom, d.encoding)
     } catch (e) {
       notify({ kind: 'error', message: t('saveFailed', { name: d.name, reason: reason(e) }) })
       return false
