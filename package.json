@@ -1,6 +1,6 @@
 {
   "name": "donotext",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "MarkText-style WYSIWYG markdown editor with split panes and diff compare",
   "private": true,
   "main": "./out/main/index.js",
