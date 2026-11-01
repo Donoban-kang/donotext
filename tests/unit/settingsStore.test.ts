@@ -6,7 +6,7 @@ import { restoreSession } from '../../src/renderer/app/session'
 import { cssFontName, resolveFonts } from '../../src/renderer/app/SettingsController'
 import { createDocumentsStore } from '../../src/renderer/store/documents'
 import { createLayoutStore } from '../../src/renderer/store/layoutStore'
-import { AUTO_SAVE_DELAY, createSettingsStore, FONT_SIZE, LINE_HEIGHT, SETTINGS_KEY } from '../../src/renderer/store/settings'
+import { AUTO_SAVE_DELAY, createSettingsStore, FONT_SIZE, LINE_HEIGHT, MAX_HIDDEN, SETTINGS_KEY } from '../../src/renderer/store/settings'
 import { createWorkspaceStore } from '../../src/renderer/store/workspace'
 
 beforeEach(() => localStorage.clear())
@@ -130,5 +130,34 @@ describe('restore on start', () => {
     expect(docs).toHaveLength(1)
     expect(docs[0].text).toContain('unsaved')
     expect(notify).toHaveBeenCalled()
+  })
+})
+
+describe('hidden tree entries', () => {
+  it('hides and unhides paths without duplicates, and remembers them', () => {
+    const store = createSettingsStore()
+    store.getState().hidePath('/w/a')
+    store.getState().hidePath('/w/a')
+    store.getState().hidePath('/w/b')
+    expect(store.getState().hiddenPaths).toEqual(['/w/a', '/w/b'])
+    store.getState().unhidePath('/w/a')
+    expect(createSettingsStore().getState().hiddenPaths).toEqual(['/w/b']) // read back from storage
+    store.getState().clearHiddenPaths()
+    expect(store.getState().hiddenPaths).toEqual([])
+  })
+  it('stops at the limit and ignores damaged stored lists', () => {
+    const store = createSettingsStore()
+    for (let i = 0; i < MAX_HIDDEN + 20; i++) store.getState().hidePath(`/w/${i}`)
+    expect(store.getState().hiddenPaths).toHaveLength(MAX_HIDDEN)
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ state: { hiddenPaths: ['/ok', 5, null, '', '/ok', 'x'.repeat(5000)] }, version: 1 }))
+    expect(createSettingsStore().getState().hiddenPaths).toEqual(['/ok'])
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ state: { hiddenPaths: 'nope' }, version: 1 }))
+    expect(createSettingsStore().getState().hiddenPaths).toEqual([])
+  })
+  it('"기본값으로 되돌리기" leaves the hidden list alone', () => {
+    const store = createSettingsStore()
+    store.getState().hidePath('/w/a')
+    store.getState().resetSettings()
+    expect(store.getState().hiddenPaths).toEqual(['/w/a'])
   })
 })

@@ -156,6 +156,21 @@ export function SettingsDialog(): React.ReactElement | null {
           <Switch label={t('restoreOnStart')} hint={t('restoreOnStartHint')} checked={s.restoreOnStart} onChange={s.setRestoreOnStart} />
         </Section>
 
+        <Section title={t('settingsFiles')}>
+          <div className="dn-set-row">
+            <div className="dn-set-text">
+              <span className="dn-set-label">{t('hiddenEntries')}</span>
+              <p>{t('hiddenEntriesHint')}</p>
+            </div>
+            <div className="dn-set-control">
+              <output data-testid="hidden-count">{t('hiddenCount', { count: String(s.hiddenPaths.length) })}</output>
+              <button type="button" className="dn-set-small" disabled={s.hiddenPaths.length === 0} onClick={s.clearHiddenPaths}>
+                {t('unhideAll')}
+              </button>
+            </div>
+          </div>
+        </Section>
+
         <Section title={t('settingsSplit')}>
           <Switch label={t('splitSync')} hint={t('splitSyncHint')} checked={s.splitSync} onChange={s.setSplitSync} />
         </Section>

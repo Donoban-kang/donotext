@@ -14,3 +14,8 @@ export function validateEntryName(name: string): MessageKey | null {
   if (/[\\/\0]/.test(n)) return 'nameInvalidChars'
   return null
 }
+
+/** Leaves out the entries the user hid from the tree (they stay on disk). */
+export function withoutHidden(entries: DirEntry[], hidden: ReadonlySet<string>): DirEntry[] {
+  return hidden.size === 0 ? entries : entries.filter((e) => !hidden.has(e.path))
+}

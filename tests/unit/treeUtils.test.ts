@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterEntries, validateEntryName } from '../../src/renderer/sidebar/treeUtils'
+import { filterEntries, validateEntryName, withoutHidden } from '../../src/renderer/sidebar/treeUtils'
 import type { DirEntry } from '../../src/shared/fsTypes'
 
 const e = (name: string, isDir = false): DirEntry => ({ name, path: `/w/${name}`, isDir })
@@ -20,5 +20,15 @@ describe('validateEntryName', () => {
   })
   it.each(['', '  ', '.', '..', 'a/b', 'a\\b', 'x\0y'])('rejects %j', (n) => {
     expect(validateEntryName(n)).not.toBeNull()
+  })
+})
+
+describe('withoutHidden', () => {
+  const list = [e('sub', true), e('a.md'), e('b.md')]
+  it('drops hidden paths and keeps the rest in order', () => {
+    expect(withoutHidden(list, new Set(['/w/a.md'])).map((x) => x.name)).toEqual(['sub', 'b.md'])
+  })
+  it('returns the same list when nothing is hidden', () => {
+    expect(withoutHidden(list, new Set())).toBe(list)
   })
 })

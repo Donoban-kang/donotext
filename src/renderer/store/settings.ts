@@ -39,8 +39,15 @@ export interface SettingsState {
   /** Seconds after the last edit before auto-save writes the file. */
   autoSaveDelay: number
   setAutoSaveDelay(v: number): void
+  /** Files and folders hidden from the file tree. Hiding never touches the disk. */
+  hiddenPaths: string[]
+  hidePath(path: string): void
+  unhidePath(path: string): void
+  clearHiddenPaths(): void
   resetSettings(): void
 }
+
+export const MAX_HIDDEN = 500
 
 export type FontFamily = 'default' | 'serif' | 'mono' | 'custom'
 export type EditorWidth = 'narrow' | 'wide' | 'full'
@@ -71,6 +78,7 @@ type Persisted = Pick<
   | 'spellcheck'
   | 'restoreOnStart'
   | 'autoSaveDelay'
+  | 'hiddenPaths'
 >
 
 /** localStorage can be missing, blocked or corrupt; settings must still work in memory then. */
@@ -117,6 +125,9 @@ function sanitize(stored: unknown): Partial<Persisted> {
   out.lineHeight = num(s.lineHeight, LINE_HEIGHT.min, LINE_HEIGHT.max)
   out.autoSaveDelay = num(s.autoSaveDelay, AUTO_SAVE_DELAY.min, AUTO_SAVE_DELAY.max)
   for (const k of ['fontSize', 'lineHeight', 'autoSaveDelay'] as const) if (out[k] === undefined) delete out[k]
+  if (Array.isArray(s.hiddenPaths)) {
+    out.hiddenPaths = [...new Set(s.hiddenPaths.filter((p): p is string => typeof p === 'string' && p.length > 0 && p.length <= 4096))].slice(0, MAX_HIDDEN)
+  }
   return out
 }
 
@@ -154,6 +165,10 @@ export function createSettingsStore() {
         setRestoreOnStart: (v) => set({ restoreOnStart: v }),
         autoSaveDelay: AUTO_SAVE_DELAY.default,
         setAutoSaveDelay: (v) => set({ autoSaveDelay: clamp(Math.round(v * 2) / 2, AUTO_SAVE_DELAY.min, AUTO_SAVE_DELAY.max) }),
+        hiddenPaths: [],
+        hidePath: (path) => set((s) => (s.hiddenPaths.includes(path) || s.hiddenPaths.length >= MAX_HIDDEN ? s : { hiddenPaths: [...s.hiddenPaths, path] })),
+        unhidePath: (path) => set((s) => ({ hiddenPaths: s.hiddenPaths.filter((p) => p !== path) })),
+        clearHiddenPaths: () => set({ hiddenPaths: [] }),
         resetSettings: () =>
           set({
             theme: 'system',
@@ -191,7 +206,8 @@ export function createSettingsStore() {
           editorWidth: s.editorWidth,
           spellcheck: s.spellcheck,
           restoreOnStart: s.restoreOnStart,
-          autoSaveDelay: s.autoSaveDelay
+          autoSaveDelay: s.autoSaveDelay,
+          hiddenPaths: s.hiddenPaths
         }),
         merge: (persisted, current) => ({ ...current, ...sanitize(persisted) })
       }

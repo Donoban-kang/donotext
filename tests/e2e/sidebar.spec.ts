@@ -68,14 +68,21 @@ test('renaming a file updates the tree and the open tab', async ({ page }) => {
   expect(await mockHas(page, '/w/notes/a.md')).toBe(false)
 })
 
-test('deleting asks for confirmation first', async ({ page }) => {
+test('moving to the trash is only in the right-click menu, and asks for confirmation first', async ({ page }) => {
   await openFolder(page)
-  await tree(page).getByRole('button', { name: '삭제 b.txt', exact: true }).click()
-  await expect(page.getByRole('alertdialog')).toContainText('"b.txt"')
-  await page.getByRole('button', { name: '취소' }).click()
+  // the row icons no longer include a trash can
+  await expect(tree(page).getByRole('button', { name: /^(삭제|휴지통)/ })).toHaveCount(0)
+  await tree(page).getByRole('button', { name: 'b.txt', exact: true }).click({ button: 'right' })
+  await page.getByTestId('tree-menu').getByRole('menuitem', { name: '휴지통으로 이동' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toContainText('"b.txt"')
+  await expect(dialog).toContainText('휴지통')
+  await expect(dialog).toContainText('목록에서 숨기기')
+  await dialog.getByRole('button', { name: '취소' }).click()
   expect(await mockHas(page, '/w/notes/b.txt')).toBe(true)
-  await tree(page).getByRole('button', { name: '삭제 b.txt', exact: true }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: '삭제' }).click()
+  await tree(page).getByRole('button', { name: 'b.txt', exact: true }).click({ button: 'right' })
+  await page.getByTestId('tree-menu').getByRole('menuitem', { name: '휴지통으로 이동' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '휴지통으로 이동' }).click()
   await expect(tree(page).getByRole('button', { name: 'b.txt', exact: true })).toHaveCount(0)
   expect(await mockHas(page, '/w/notes/b.txt')).toBe(false)
 })

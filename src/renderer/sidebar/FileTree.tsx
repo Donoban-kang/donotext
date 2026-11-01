@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DirEntry } from '../../shared/fsTypes'
 import { isSameOrInside } from '../../shared/paths'
 import { getCommands } from '../app/appCommands'
@@ -9,7 +9,8 @@ import { useDocuments } from '../store/documents'
 import { useSettings } from '../store/settings'
 import { useWorkspace } from '../store/workspace'
 import { useDialogs, useToasts } from '../store/ui'
-import { filterEntries, validateEntryName } from './treeUtils'
+import { filterEntries, validateEntryName, withoutHidden } from './treeUtils'
+import { TreeContextMenu, type TreeMenuAnchor } from './TreeContextMenu'
 
 type Editing = { mode: 'create'; parent: string; isDir: boolean } | { mode: 'rename'; path: string; name: string }
 
@@ -50,6 +51,12 @@ function NameInput({ initial, error, onCommit, onCancel }: NameInputProps): Reac
 export function FileTree(): React.ReactElement {
   const showAll = useSettings((s) => s.showAllFiles)
   const setShowAll = useSettings((s) => s.setShowAllFiles)
+  const hiddenPaths = useSettings((s) => s.hiddenPaths)
+  const hidePath = useSettings((s) => s.hidePath)
+  const unhidePath = useSettings((s) => s.unhidePath)
+  const hidden = useMemo(() => new Set(hiddenPaths), [hiddenPaths])
+  const [showHidden, setShowHidden] = useState(false)
+  const [menu, setMenu] = useState<TreeMenuAnchor | null>(null)
   const root = useWorkspace((s) => s.root)
   const setRoot = useWorkspace((s) => s.setRoot)
   const [children, setChildren] = useState<Record<string, DirEntry[]>>({})
@@ -147,7 +154,7 @@ export function FileTree(): React.ReactElement {
     const ok = await useDialogs.getState().askConfirm({
       title: t('confirmDeleteTitle', { name: entry.name }),
       body: t('confirmDeleteBody'),
-      okLabel: t('delete')
+      okLabel: t('moveToTrash')
     })
     if (!ok) return
     try {
@@ -160,6 +167,21 @@ export function FileTree(): React.ReactElement {
       fail(e)
     }
   }
+
+  const startRename = (entry: DirEntry): void => {
+    setNameError(null)
+    setEditing({ mode: 'rename', path: entry.path, name: entry.name })
+  }
+
+  // Only the entries that are actually listed count (other folders' hidden paths are not on screen).
+  const hiddenOnScreen = useMemo(() => {
+    const seen = new Set<string>()
+    for (const [dir, list] of Object.entries(children)) {
+      if (dir !== root && !expanded.has(dir)) continue
+      for (const e of filterEntries(list, showAll)) if (hidden.has(e.path)) seen.add(e.path)
+    }
+    return seen.size
+  }, [children, expanded, hidden, root, showAll])
 
   const nameInput = (initial: string): React.ReactElement => (
     <NameInput
@@ -174,7 +196,9 @@ export function FileTree(): React.ReactElement {
   )
 
   const renderDir = (dir: string, depth: number): React.ReactNode => {
-    const entries = filterEntries(children[dir] ?? [], showAll)
+    const listed = filterEntries(children[dir] ?? [], showAll)
+    // Hidden entries stay out of the list unless "숨긴 항목 보기" is on (then they are shown dimmed).
+    const entries = showHidden ? listed : withoutHidden(listed, hidden)
     return (
       <>
         {editing?.mode === 'create' && editing.parent === dir && (
@@ -187,7 +211,15 @@ export function FileTree(): React.ReactElement {
           const renaming = editing?.mode === 'rename' && editing.path === entry.path
           return (
             <li key={entry.path} role="treeitem" aria-expanded={entry.isDir ? isOpen : undefined}>
-              <div className="dn-tree-row" style={{ paddingLeft: 8 + depth * 14 }}>
+              <div
+                className={'dn-tree-row' + (hidden.has(entry.path) ? ' dn-tree-hidden' : '')}
+                style={{ paddingLeft: 8 + depth * 14 }}
+                onContextMenu={(e) => {
+                  if (renaming) return
+                  e.preventDefault()
+                  setMenu({ x: e.clientX, y: e.clientY, entry })
+                }}
+              >
                 {renaming ? (
                   nameInput(entry.name)
                 ) : (
@@ -201,23 +233,25 @@ export function FileTree(): React.ReactElement {
                 )}
                 {!renaming && (
                   <span className="dn-tree-actions">
-                    {entry.isDir && (
-                      <button aria-label={`${t('newFile')} ${entry.name}`} onClick={() => startCreate(false, entry.path)}>
-                        <Icon name="plus" />
+                    {hidden.has(entry.path) ? (
+                      <button aria-label={`${t('unhideEntry')} ${entry.name}`} title={t('unhideEntry')} onClick={() => unhidePath(entry.path)}>
+                        <Icon name="eye" />
                       </button>
+                    ) : (
+                      <>
+                        {entry.isDir && (
+                          <button aria-label={`${t('newFile')} ${entry.name}`} onClick={() => startCreate(false, entry.path)}>
+                            <Icon name="plus" />
+                          </button>
+                        )}
+                        <button aria-label={`${t('rename')} ${entry.name}`} onClick={() => startRename(entry)}>
+                          <Icon name="edit" />
+                        </button>
+                        <button aria-label={`${t('hideEntry')} ${entry.name}`} title={t('hideEntryHint')} onClick={() => hidePath(entry.path)}>
+                          <Icon name="eyeOff" />
+                        </button>
+                      </>
                     )}
-                    <button
-                      aria-label={`${t('rename')} ${entry.name}`}
-                      onClick={() => {
-                        setNameError(null)
-                        setEditing({ mode: 'rename', path: entry.path, name: entry.name })
-                      }}
-                    >
-                      <Icon name="edit" />
-                    </button>
-                    <button aria-label={`${t('delete')} ${entry.name}`} onClick={() => void remove(entry)}>
-                      <Icon name="trash" />
-                    </button>
                   </span>
                 )}
               </div>
@@ -249,6 +283,22 @@ export function FileTree(): React.ReactElement {
         </ul>
       ) : (
         <p className="dn-sidebar-empty">{t('noFolder')}</p>
+      )}
+      {root && (hiddenOnScreen > 0 || showHidden) && (
+        <button className="dn-tree-hidden-toggle" aria-pressed={showHidden} onClick={() => setShowHidden(!showHidden)}>
+          <Icon name={showHidden ? 'eyeOff' : 'eye'} />
+          <span>{showHidden ? t('hiddenHide') : t('hiddenShow', { count: String(hiddenOnScreen) })}</span>
+        </button>
+      )}
+      {menu && (
+        <TreeContextMenu
+          anchor={menu}
+          hidden={hidden.has(menu.entry.path)}
+          onClose={() => setMenu(null)}
+          onRename={() => startRename(menu.entry)}
+          onToggleHidden={() => (hidden.has(menu.entry.path) ? unhidePath(menu.entry.path) : hidePath(menu.entry.path))}
+          onTrash={() => void remove(menu.entry)}
+        />
       )}
     </div>
   )

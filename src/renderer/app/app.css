@@ -234,3 +234,11 @@ body {
 .dn-set-actions { align-items: center; }
 .dn-modal-actions .dn-set-reset { color: var(--dn-sub); }
 @media (max-width: 560px) { .dn-set-row { flex-wrap: wrap; } .dn-set-control input[type="range"] { width: 120px; } }
+
+/* ---------- Hiding entries in the file tree ---------- */
+.dn-tree-hidden .dn-tree-name { opacity: .45; font-style: italic; }
+.dn-tree-hidden-toggle { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 8px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--dn-sub); font: inherit; font-size: 12px; cursor: pointer; }
+.dn-tree-hidden-toggle:hover { background: var(--dn-hover); color: var(--dn-text); }
+.dn-tree-hidden-toggle[aria-pressed="true"] { color: var(--dn-accent); }
+.dn-set-small { height: 28px; padding: 0 12px; border: 1px solid var(--dn-line); border-radius: 8px; background: var(--dn-surface); color: var(--dn-text); font: inherit; font-size: 13px; cursor: pointer; }
+.dn-set-small:disabled { opacity: .4; cursor: default; }
