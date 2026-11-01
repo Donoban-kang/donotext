@@ -1,0 +1,40 @@
+name: Publish release
+
+# Turns the draft release made by the "Release" workflow into a public release.
+# GitHub creates the git tag (at the commit the draft was built from) at that moment.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag of the draft release to publish, e.g. v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release_tag must look like v1.2.3" >&2; exit 1
+          fi
+          is_draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          if [ "$is_draft" != "true" ]; then
+            echo "Release $TAG is not a draft (already published?)" >&2; exit 1
+          fi
+          names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          for ext in exe dmg AppImage; do
+            if ! grep -q "\.$ext$" <<<"$names"; then
+              echo "No .$ext installer attached to $TAG; refusing to publish" >&2; exit 1
+            fi
+          done
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,tagName,isDraft,assets --jq '{url, tagName, isDraft, assets: [.assets[].name]}'
