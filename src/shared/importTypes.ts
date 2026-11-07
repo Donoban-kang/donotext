@@ -18,6 +18,8 @@ export type ImportWarningCode =
   | 'garbled'
   /** Only the first pages were converted. */
   | 'pagesTruncated'
+  /** A sheet was longer than the limit; `count` rows were left out. */
+  | 'rowsTruncated'
   /** Embedded pictures were left out. `count` is how many. */
   | 'imagesSkipped'
   /** Some formatting (fonts, colours, merged cells, ...) was simplified. */

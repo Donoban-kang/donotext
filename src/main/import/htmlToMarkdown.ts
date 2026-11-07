@@ -91,6 +91,11 @@ export function htmlToMarkdown(html: string): HtmlConversion {
   const md = td.turndown(html)
   const cleaned = md
     .replace(/[ \t]+$/gm, '')
+    // turndown pads list markers ("-   item", "1.  item"); one space is enough
+    .replace(/^(\s*)-\s{2,}(?=\S)/gm, '$1- ')
+    .replace(/^(\s*)(\d+)\.\s{2,}(?=\S)/gm, '$1$2. ')
+    // "# 1\. Title": a number at the start of a heading cannot start a list, no escape needed
+    .replace(/^(#{1,6} \d+)\\\./gm, '$1.')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
   return { markdown: cleaned ? `${cleaned}\n` : '', imagesSkipped }

@@ -6,7 +6,10 @@
 // It is pure (no pdfjs, no I/O) so it can be unit tested with synthetic fragments.
 
 import type { ImportStats, ImportWarning } from '../../shared/importTypes'
+import { escapeMarkdown } from './markdownEscape'
 import { BULLET_CHARS, CIRCLED_LABELS, LABEL_SYLLABLES, PAGE_NUMBER_UNITS, PARTICLES } from './koreanData'
+
+export { escapeMarkdown }
 
 export interface PdfTextItem {
   str: string
@@ -68,7 +71,6 @@ const PAGE_NUMBER_RE = new RegExp(String.raw`^[-–—~\s]*(?:page\s*)?\d{1,4}(?
 const HANGUL_RE = /[\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163]/
 const CJK_RE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/
 const PUA_RE = /[\uE000-\uF8FF]/
-const URL_RE = /https?:\/\/[^\s<>)]+/g
 
 // A marker is only a list marker when it is followed by text.
 const ORDERED_RE = /^(\d{1,2})\.\s+(?=\S)/
@@ -94,24 +96,6 @@ function normalizeSpaces(s: string): string {
   return s.replace(/[ \t\u00A0]+/g, ' ').trim()
 }
 
-/** Characters that would be read as Markdown or math syntax are escaped; URLs are left untouched. */
-export function escapeMarkdown(text: string): string {
-  // a line that would otherwise start a heading, bullet or numbered list
-  return escapeInline(text)
-    .replace(/^(#{1,6}(?=\s)|\+(?=\s))/, '\\$1')
-    .replace(/^(\d+)([.)])(?=\s)/, '$1\\$2')
-}
-
-function escapeInline(text: string): string {
-  const escapeChunk = (s: string): string => s.replace(/[\\*_`<>[\]~$|]/g, (c) => `\\${c}`)
-  let out = ''
-  let last = 0
-  for (const m of text.matchAll(URL_RE)) {
-    out += escapeChunk(text.slice(last, m.index)) + m[0]
-    last = m.index + m[0].length
-  }
-  return out + escapeChunk(text.slice(last))
-}
 
 // ---------- 1. fragments -> lines ----------
 
