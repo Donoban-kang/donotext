@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectWrapMode, escapeMarkdown, joinWrapped, layoutPdf, type PdfPageInput, type PdfTextItem } from '../../src/main/import/pdfLayout'
+import { detectWrapMode, escapeMarkdown, findTableBoxes, joinWrapped, layoutPdf, type PdfPageInput, type PdfTextItem } from '../../src/main/import/pdfLayout'
 
 const W = 595
 const H = 842
@@ -87,9 +87,18 @@ describe('layoutPdf: headings', () => {
     expect(r.stats.headings).toBe(2)
   })
 
-  it('does not turn a numbered line into a heading just because it is big', () => {
-    const r = layoutPdf([page(run('1. 크게 쓴 번호 줄', 80, 56, 16), ...lines([`${FULL}를`, '본문 끝.'], 130))])
-    expect(r.markdown).not.toMatch(/^#/m)
+  it('keeps a numbered line as a heading when it is set larger than the body, but not at body size', () => {
+    const big = layoutPdf([page(run('1. 크게 쓴 장 제목', 80, 56, 16), ...lines([`${FULL}를`, '본문 끝.'], 130))])
+    expect(big.markdown).toContain('# 1\\. 크게 쓴 장 제목')
+    const small = layoutPdf([page(run('1. 본문 크기의 번호 항목', 80, 56, 10), ...lines([`${FULL}를`, '본문 끝.'], 130))])
+    expect(small.markdown).not.toMatch(/^#/m)
+    expect(small.markdown).toContain('1. 본문 크기의 번호 항목')
+  })
+
+  it('treats a slightly larger bold-style section number ("2.1 Title") as a sub-heading', () => {
+    const r = layoutPdf([page(run('큰 제목', 80, 56, 22), run('2.1 필요한 환경', 130, 56, 12), ...lines([`${FULL}를`, `${FULL}는`, '본문 끝.'], 170))])
+    expect(r.markdown).toContain('# 큰 제목')
+    expect(r.markdown).toContain('## 2.1 필요한 환경')
   })
 })
 
@@ -133,6 +142,53 @@ describe('layoutPdf: Korean official-document numbering', () => {
     const out = r.markdown.trim().split('\n')
     expect(out).toHaveLength(2)
     expect(out[0]).toContain('이어지는 설명입니다.')
+  })
+})
+
+describe('layoutPdf: lists from real-world PDFs', () => {
+  const glyph = (code: number, top: number, x: number): PdfTextItem => ({ str: String.fromCharCode(code), x, y: H - top, width: 5, height: 10 })
+
+  it('reads symbol-font list numbers as markers, counts them, and nests by position', () => {
+    const r = layoutPdf([
+      page(
+        glyph(0xe072, 100, 57), glyph(0xe094, 100, 64), run('첫째 항목', 100, 69),
+        glyph(0xe072, 120, 75), glyph(0xe094, 120, 82), run('하위 하나', 120, 87),
+        glyph(0xe073, 140, 75), glyph(0xe094, 140, 82), run('하위 둘', 140, 87),
+        glyph(0xe073, 160, 57), glyph(0xe094, 160, 64), run('둘째 항목', 160, 69)
+      )
+    ])
+    expect(r.markdown.trim().split('\n')).toEqual(['1. 첫째 항목', '    1. 하위 하나', '    2. 하위 둘', '2. 둘째 항목'])
+    expect(r.markdown).not.toMatch(/[\uE000-\uF8FF]/)
+    expect(r.warnings).toEqual([])
+  })
+
+  it('turns indented lines without any marker into bullets, joined with their wrapped lines', () => {
+    const r = layoutPdf([
+      page(
+        ...lines([`${FULL}를`, `${FULL}는`, '문단 끝입니다.'], 100),
+        run(`${FULL.slice(0, 40)}를`, 200, 74),
+        run('이어지는 줄입니다.', 217, 74),
+        run('짧은 둘째 항목', 234, 74),
+        ...lines([`${FULL}를`, '다시 본문입니다.'], 290)
+      )
+    ])
+    const out = r.markdown.trim().split('\n').filter(Boolean)
+    expect(out.filter((l) => l.startsWith('- '))).toHaveLength(2)
+    expect(out.find((l) => l.startsWith('- '))).toContain('이어지는 줄입니다.')
+    // the first bullet of a list is never indented (4 spaces would make it a code block)
+    expect(out.every((l) => !l.startsWith('    '))).toBe(true)
+  })
+
+  it('does not make bullets of a first-line indent or of a centred caption', () => {
+    const r = layoutPdf([
+      page(
+        run(`${FULL.slice(0, 46)}를`, 100, 76), // first line indented
+        run(`${FULL}는`, 117, 56),
+        run('문단 끝입니다.', 134, 56),
+        run('그림 1. 가운데 정렬된 설명', 200, 230)
+      )
+    ])
+    expect(r.markdown).not.toMatch(/^\s*- /m)
   })
 })
 
@@ -232,5 +288,62 @@ describe('joinWrapped / detectWrapMode', () => {
     expect(detectWrapMode(word)).toBe('word')
     expect(detectWrapMode(char)).toBe('char')
     expect(detectWrapMode(['가', '나'])).toBe('word') // too few samples
+  })
+})
+
+describe('bordered tables (border lines give rows and columns)', () => {
+  /** Border lines of a grid: rows at `ys` (from the page top), columns at `xs`. */
+  const grid = (ys: number[], xs: number[]) => ({
+    h: ys.map((top) => ({ y: H - top, x0: xs[0]!, x1: xs[xs.length - 1]! })),
+    v: xs.map((x) => ({ x, y0: H - ys[ys.length - 1]!, y1: H - ys[0]! }))
+  })
+
+  it('finds a table from touching lines and ignores a lone underline', () => {
+    const boxes = findTableBoxes({ ...grid([100, 140, 200], [50, 200, 400]), h: [...grid([100, 140, 200], [50, 200, 400]).h, { y: H - 500, x0: 50, x1: 400 }] })
+    expect(boxes).toHaveLength(1)
+    expect(boxes[0]!.xs).toEqual([50, 200, 400])
+    expect(boxes[0]!.ys).toEqual([H - 100, H - 140, H - 200])
+    expect(findTableBoxes({ h: [{ y: 700, x0: 50, x1: 500 }], v: [] })).toEqual([])
+    expect(findTableBoxes(undefined)).toEqual([])
+  })
+
+  it('keeps a cell whose text wraps over several lines in one cell, including lines with only one column', () => {
+    const rules = grid([100, 130, 200, 250], [50, 200, 450])
+    const r = layoutPdf([
+      {
+        width: W,
+        height: H,
+        rules,
+        items: [
+          run('안내 문구', 120, 56), run('하는 일', 120, 206),
+          run('첫 줄 왼쪽', 150, 56), run('첫 줄 오른쪽', 150, 206),
+          run('둘째 줄 왼쪽', 170, 56), run('둘째 줄 오른쪽', 170, 206),
+          run('셋째 줄 오른쪽만', 190, 206),
+          run('다음 행', 225, 56), run('설명', 225, 206)
+        ]
+      }
+    ])
+    expect(r.markdown.trim().split('\n')).toEqual([
+      '| 안내 문구 | 하는 일 |',
+      '| --- | --- |',
+      '| 첫 줄 왼쪽 둘째 줄 왼쪽 | 첫 줄 오른쪽 둘째 줄 오른쪽 셋째 줄 오른쪽만 |',
+      '| 다음 행 | 설명 |'
+    ])
+    expect(r.stats.tables).toBe(1)
+  })
+
+  it('puts text outside the table back into the normal flow', () => {
+    const rules = grid([100, 130, 160], [50, 200, 450])
+    const r = layoutPdf([
+      {
+        width: W,
+        height: H,
+        rules,
+        items: [run('가', 120, 56), run('나', 120, 206), run('다', 150, 56), run('라', 150, 206), run('표 아래의 문단입니다.', 220, 56)]
+      }
+    ])
+    const parts = r.markdown.trim().split('\n\n')
+    expect(parts).toHaveLength(2)
+    expect(parts[1]).toBe('표 아래의 문단입니다.')
   })
 })
