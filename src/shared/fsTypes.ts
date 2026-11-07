@@ -1,4 +1,5 @@
 import type { FileKind } from './fileKind'
+import type { ImportFormat } from './importTypes'
 import type { Encoding, Eol } from './textFormat'
 
 export type Warning = 'notUtf8' | 'tooLarge'
@@ -25,4 +26,6 @@ export interface DirEntry {
 export type DropEntry =
   | { kind: 'file'; result: ReadResult }
   | { kind: 'folder'; root: string }
+  /** A PDF or Office document: it is converted to Markdown (the file itself is granted for reading only). */
+  | { kind: 'importable'; path: string; name: string; format: ImportFormat }
   | { kind: 'rejected'; name: string; reason: 'binary' | 'tooLarge' | 'unreadable' }

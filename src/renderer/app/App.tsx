@@ -73,6 +73,10 @@ export function App(): React.ReactElement {
           <Icon name="folder" />
           <span className="dn-lbl">{t('open')}</span>
         </button>
+        <button className="dn-btn" title={t('importDocTitle')} data-testid="import-doc" onClick={() => void c.importDocument()}>
+          <Icon name="download" />
+          <span className="dn-lbl">{t('importDoc')}</span>
+        </button>
         <button className="dn-btn" title={t('newDoc')} onClick={() => c.newUntitled()}>
           <Icon name="plus" />
           <span className="dn-lbl">{t('newDoc')}</span>

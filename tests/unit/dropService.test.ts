@@ -40,6 +40,24 @@ describe('openDropped', () => {
     expect(granted).toEqual([sub])
   })
 
+  it('offers PDF and Office documents for import instead of refusing them as binary', async () => {
+    const pdf = join(dir, '공문.PDF')
+    const docx = join(dir, 'a.docx')
+    await writeFile(pdf, Buffer.from([0x25, 0x50, 0x44, 0x46, 0x00, 0x01]))
+    await writeFile(docx, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]))
+    expect(await openDropped([pdf, docx], fs, grant)).toEqual([
+      { kind: 'importable', path: pdf, name: '공문.PDF', format: 'pdf' },
+      { kind: 'importable', path: docx, name: 'a.docx', format: 'docx' }
+    ])
+    expect(granted).toEqual([pdf, docx]) // granted so the conversion is allowed to read exactly these files
+  })
+
+  it('still opens a dropped .html file as text', async () => {
+    const html = join(dir, 'page.html')
+    await writeFile(html, '<p>hi</p>')
+    expect(await openDropped([html], fs, grant)).toMatchObject([{ kind: 'file' }])
+  })
+
   it('refuses binary files without granting or reading them', async () => {
     const bin = join(dir, 'pic.png')
     await writeFile(bin, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x01]))

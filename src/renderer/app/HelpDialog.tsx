@@ -108,6 +108,11 @@ export function HelpDialog(): React.ReactElement | null {
         </section>
 
         <section className="dn-help-section">
+          <h3>{t('helpImport')}</h3>
+          <p className="dn-help-note">{t('helpImportBody')}</p>
+        </section>
+
+        <section className="dn-help-section">
           <h3>{t('helpShortcuts')}</h3>
           <ul className="dn-help-keys">
             {SHORTCUTS.map(([keys, label]) => (

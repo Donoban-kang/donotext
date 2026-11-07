@@ -31,7 +31,8 @@ export type TextListener = (text: string, origin: string) => void
 export interface DocumentsState {
   docs: Record<string, Doc>
   open(r: ReadResult): string
-  openUntitled(): string
+  /** A new unsaved document. With a name (e.g. an imported file's) the "제목 없음 N" counter is left alone. */
+  openUntitled(name?: string): string
   /** Splits an edited copy off a document; the copy starts with the same text and the same saved baseline. */
   forkDoc(id: string): string | null
   /** Opens a file's current content as a copy (session restore). */
@@ -104,12 +105,12 @@ export function createDocumentsStore() {
       return id
     },
 
-    openUntitled() {
+    openUntitled(givenName) {
       const id = `doc-${run}-${++counter}`
       const doc: Doc = {
         id,
         path: null,
-        name: t('untitledName', { n: String(++untitledCounter) }),
+        name: givenName ?? t('untitledName', { n: String(++untitledCounter) }),
         text: '',
         baseline: '',
         baselineNormalized: '',

@@ -26,7 +26,7 @@ test('dragging files over the window shows the hint, and leaving hides it', asyn
   await expect(page.getByTestId('drop-overlay')).toBeVisible()
   const overlay = page.getByTestId('drop-overlay')
   await expect(overlay).toContainText('여기에 놓으면 donotext로 열려요')
-  await expect(overlay.locator('.dn-drop-badge')).toHaveText(['.md', '.markdown', '.txt', '.json', '폴더'])
+  await expect(overlay.locator('.dn-drop-badge')).toHaveText(['.md', '.markdown', '.txt', '.json', '.pdf', '.docx', '.xlsx', '.pptx', '폴더'])
   await page.evaluate(() => {
     const dt = new DataTransfer()
     dt.items.add(new File(['x'], 'a.md'))

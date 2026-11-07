@@ -1,5 +1,8 @@
 // Reads a PDF with pdfjs and returns its positioned text, ready for layoutPdf().
 
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import type * as Pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { BOLD_FONT_WORD } from './koreanData'
 import type { PdfPageInput, PdfTextItem } from './pdfLayout'
 
@@ -29,8 +32,9 @@ interface RawItem {
 const BOLD_RE = new RegExp(`bold|black|heavy|extrabold|semibold|demi|${BOLD_FONT_WORD}`, 'i')
 
 export async function extractPdfPages(data: Uint8Array, opts: ExtractOptions): Promise<ExtractResult> {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const dir = opts.assetDir.replace(/[\\/]+$/, '')
+  // Loaded by file path, not by package name: in the installed app the library sits outside the packed archive.
+  const pdfjs = (await import(/* @vite-ignore */ pathToFileURL(join(dir, 'legacy/build/pdf.mjs')).href)) as typeof Pdfjs
   const task = pdfjs.getDocument({
     // pdfjs takes ownership of the buffer it is given; hand it a copy so the caller's bytes stay valid
     data: data.slice(),

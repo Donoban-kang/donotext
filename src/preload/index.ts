@@ -52,6 +52,8 @@ const api: DonotextApi = {
     if (!drop || Date.now() - drop.at > 10_000) return Promise.resolve([])
     return ipcRenderer.invoke(IPC.openDropped, drop.paths)
   },
+  importDialog: (labels) => ipcRenderer.invoke(IPC.importDialog, labels),
+  importFile: (path, labels) => ipcRenderer.invoke(IPC.importFile, path, labels),
   checkForUpdate: () => ipcRenderer.invoke(IPC.checkUpdate),
   onCloseRequested: (cb) => {
     const listener = (): void => cb()

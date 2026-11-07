@@ -1,6 +1,7 @@
 import type { UpdateResult } from '../../shared/appInfo'
 import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, DropEntry, ReadResult } from '../../shared/fsTypes'
+import { importFormatOf, type ImportOutcome } from '../../shared/importTypes'
 import { IMAGE_EXTENSIONS, type DonotextApi, type FileChange } from '../../shared/ipc'
 import type { SessionData } from '../../shared/session'
 import type { Encoding, Eol } from '../../shared/textFormat'
@@ -28,6 +29,10 @@ export interface MockController {
   closeResponses: boolean[]
   /** Paths the next drop from the file manager will carry (the mock has no real paths to read). */
   queueDrop(paths: string[]): void
+  /** What the next document import (dialog or dropped file) will report; the mock converts nothing itself. */
+  queueImport(outcome: ImportOutcome | null): void
+  /** Paths the app asked to convert, in order (null for the picker dialog). */
+  importCalls: Array<string | null>
   /** What the next "check for updates" will report. */
   setUpdateResult(r: UpdateResult): void
   /** URLs the app asked to open in the browser, in order. */
@@ -65,6 +70,8 @@ export function createMockApi(
   let nextUpdate: UpdateResult = { status: 'latest', current: '0.0.0-dev', latest: '0.0.0-dev' }
   const externalUrls: string[] = []
   let queuedDrop: string[] = []
+  const importQueue: Array<ImportOutcome | null> = []
+  const importCalls: Array<string | null> = []
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
 
@@ -207,7 +214,10 @@ export function createMockApi(
       for (const path of paths) {
         const name = path.slice(path.lastIndexOf('/') + 1)
         const stored = files.get(path)
-        if (stored) {
+        const format = importFormatOf(name)
+        if (format && format !== 'html') {
+          out.push({ kind: 'importable', path, name, format })
+        } else if (stored) {
           out.push(stored.text.includes('\u0000') ? { kind: 'rejected', name, reason: 'binary' } : { kind: 'file', result: toResult(path) })
         } else if ([...files.keys()].some((f) => f.startsWith(path + '/'))) {
           out.push({ kind: 'folder', root: path })
@@ -216,6 +226,14 @@ export function createMockApi(
         }
       }
       return out
+    },
+    async importDialog() {
+      importCalls.push(null)
+      return importQueue.shift() ?? null
+    },
+    async importFile(path) {
+      importCalls.push(path)
+      return importQueue.shift() ?? { ok: false, code: 'failed', name: path.slice(path.lastIndexOf('/') + 1) }
     },
     async getAppInfo() {
       return { name: 'donotext', version: '0.0.0-dev', author: 'Donoban-kang', repoUrl: 'https://github.com/Donoban-kang/donotext', releasesUrl: 'https://github.com/Donoban-kang/donotext/releases' }
@@ -248,6 +266,8 @@ export function createMockApi(
     queueDrop: (paths) => {
       queuedDrop = paths
     },
+    queueImport: (outcome) => void importQueue.push(outcome),
+    importCalls,
     setUpdateResult: (r) => {
       nextUpdate = r
     },

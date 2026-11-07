@@ -85,3 +85,9 @@ c.drawString(72, y, '가. 점검 기간: 2026. 5. 1. ~ 5. 31.'); y -= 22
 c.drawString(72, y, '나. 점검 대상: 관내 전체 학교'); y -= 22
 c.showPage(); c.save()
 print('ok')
+
+# ---- pdf: encrypted (user password) and blank (like a scan with no text layer)
+c = canvas.Canvas('encrypted.pdf', pagesize=(595, 842), encrypt='secret')
+c.drawString(72, 700, 'secret text'); c.showPage(); c.save()
+c = canvas.Canvas('blank.pdf', pagesize=(595, 842))
+c.showPage(); c.showPage(); c.save()

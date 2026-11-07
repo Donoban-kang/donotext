@@ -22,8 +22,6 @@ export type ImportWarningCode =
   | 'rowsTruncated'
   /** Embedded pictures were left out. `count` is how many. */
   | 'imagesSkipped'
-  /** Some formatting (fonts, colours, merged cells, ...) was simplified. */
-  | 'simplified'
 
 export interface ImportWarning {
   code: ImportWarningCode
@@ -64,6 +62,8 @@ export type ImportErrorCode =
 export interface ImportFailure {
   ok: false
   code: ImportErrorCode
+  /** File name (with extension) for the message shown to the user. */
+  name: string
 }
 
 export type ImportOutcome = ImportResult | ImportFailure

@@ -9,6 +9,15 @@ files:
   - out/**
   - package.json
   - '!**/*.map'
+  # pdfjs-dist: only the legacy (Node) build, character maps, fonts and wasm are used for PDF import
+  - '!node_modules/pdfjs-dist/{build,web,types}/**'
+  - '!node_modules/pdfjs-dist/legacy/web/**'
+  - '!node_modules/pdfjs-dist/legacy/build/*.min.mjs'
+  # pdfjs's optional native canvas (~70 MB per platform) is only for drawing pages; text extraction does not use it
+  - '!node_modules/@napi-rs/**'
+# The PDF import runs in a worker thread, which cannot read files inside app.asar.
+asarUnpack:
+  - node_modules/pdfjs-dist/**
 asar: true
 compression: maximum
 electronLanguages:

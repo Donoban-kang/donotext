@@ -1,7 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session, shell } from 'electron'
 import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { buildWebPreferences } from './windowOptions'
 import { CSP } from '../shared/csp'
 import { CloseGate } from './closeGate'
@@ -14,6 +15,8 @@ import { FsService } from './services/fsService'
 import { ExportService } from './services/exportService'
 import { handleImageRequest } from './services/imageProtocol'
 import { ImageService } from './services/imageService'
+import { ImportService } from './services/importService'
+import { runInWorker } from './import/workerRunner'
 import { GrantStore } from './services/grantStore'
 import { SessionService } from './services/sessionService'
 import { SessionStore } from './services/sessionStore'
@@ -101,6 +104,10 @@ if (gotLock) void app.whenReady().then(() => {
   const fsService = new FsService({ trash: (p) => shell.trashItem(p) })
   const sessions = new SessionService(new SessionStore(app.getPath('userData')), new GrantStore(app.getPath('userData')), fsService)
   const imageService = new ImageService(fsService)
+  // In the installed app pdfjs is unpacked next to app.asar: its files are read by a worker thread, which
+  // cannot open files inside the archive.
+  const pdfjsDir = dirname(createRequire(__filename).resolve('pdfjs-dist/package.json')).replace(/app\.asar(?=[\\/])/, 'app.asar.unpacked')
+  const importService = new ImportService({ run: runInWorker, pdfjsDir, isAllowed: (p) => fsService.isAllowed(p) })
   protocol.handle(IMAGE_SCHEME, (request) => handleImageRequest(request, fsService))
   registerIpc({
     fs: fsService,
@@ -113,6 +120,7 @@ if (gotLock) void app.whenReady().then(() => {
       },
       renderPdf
     }),
+    imports: importService,
     sessions,
     watcher,
     getWindow: () => mainWindow
