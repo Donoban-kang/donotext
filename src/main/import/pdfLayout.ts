@@ -23,10 +23,17 @@ export interface PdfTextItem {
   bold?: boolean
 }
 
+/** Thin lines drawn on a page (table borders), in the same coordinates as the text. */
+export interface PdfRules {
+  h: Array<{ y: number; x0: number; x1: number }>
+  v: Array<{ x: number; y0: number; y1: number }>
+}
+
 export interface PdfPageInput {
   width: number
   height: number
   items: PdfTextItem[]
+  rules?: PdfRules
 }
 
 export interface PdfLayoutResult {
@@ -53,6 +60,8 @@ interface Line {
   bold: boolean
   /** The source text run ended with a real space (a certain word boundary when the line wraps). */
   trailingSpace: boolean
+  /** Symbol glyphs that stood in front of the text and carry no real character (list numbers drawn from a symbol font). */
+  glyphMarker: 'ordered' | 'bullet' | null
   /** Baseline measured from the page top (0 = top edge). */
   fromTop: number
   pageHeight: number
@@ -71,6 +80,7 @@ const PAGE_NUMBER_RE = new RegExp(String.raw`^[-–—~\s]*(?:page\s*)?\d{1,4}(?
 const HANGUL_RE = /[\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163]/
 const CJK_RE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/
 const PUA_RE = /[\uE000-\uF8FF]/
+const PUA_ONLY_RE = /^[\uE000-\uF8FF]+$/
 
 // A marker is only a list marker when it is followed by text.
 const ORDERED_RE = /^(\d{1,2})\.\s+(?=\S)/
@@ -131,6 +141,15 @@ function buildLines(pages: PdfPageInput[]): Line[] {
 
     for (const group of groups) {
       group.sort((a, b) => a.x - b.x)
+      // List numbers or bullets drawn from a symbol font arrive as private-use characters ("1" "." -> two
+      // meaningless glyphs). They are not text: drop them, remember that the line is a list item.
+      let glyphs = 0
+      let markerX: number | undefined
+      while (group.length > 1 && PUA_ONLY_RE.test(group[0]!.str.trim())) {
+        glyphs += [...group[0]!.str.trim()].length
+        markerX ??= group[0]!.x
+        group.shift()
+      }
       const fs = Math.max(...group.map((g) => (g.height > 0 ? g.height : 10)))
       const segs: Seg[] = []
       for (const it of group) {
@@ -154,12 +173,13 @@ function buildLines(pages: PdfPageInput[]): Line[] {
         page: pageIndex,
         y: group[0]!.y,
         fs,
-        x0: kept[0]!.x0,
+        x0: markerX ?? kept[0]!.x0,
         x1: kept[kept.length - 1]!.x1,
         text: kept.map((s) => s.text).join(' '),
         segs: kept,
         bold: kept.every((s) => s.bold),
         trailingSpace: /\s$/.test(group[group.length - 1]!.str),
+        glyphMarker: glyphs === 0 ? null : glyphs >= 2 ? 'ordered' : 'bullet',
         fromTop: page.height - group[0]!.y,
         pageHeight: page.height
       })
@@ -221,6 +241,13 @@ function detectMarker(text: string): Marker | null {
   return null
 }
 
+/** The list marker of a line: a real one in its text, or symbol glyphs that were in front of it. */
+function markerOf(line: Line): Marker | null {
+  if (line.glyphMarker === 'ordered') return { kind: 'ordered', number: 0, rest: line.text } // number 0 = "count for me"
+  if (line.glyphMarker === 'bullet') return { kind: 'bullet', number: null, rest: line.text }
+  return detectMarker(line.text)
+}
+
 function cellular(line: Line): boolean {
   if (line.segs.length < 2) return false
   // "1.   text" with a wide tab gap is a list marker, not two cells
@@ -262,6 +289,50 @@ function buildTable(rows: Line[]): string[][] {
   })
 }
 
+/** A bordered table: its row boundaries (top to bottom) and column boundaries (left to right). */
+export interface TableBox {
+  ys: number[]
+  xs: number[]
+}
+
+/**
+ * Groups the border lines of a page into tables: lines that touch belong together, and the distinct
+ * positions of the horizontal and vertical lines are the row and column boundaries. Lone lines (an
+ * underline, a decorative bar) never make a table: it needs at least two rows and two columns.
+ */
+export function findTableBoxes(rules: PdfRules | undefined): TableBox[] {
+  if (!rules) return []
+  type Seg = { x0: number; x1: number; y0: number; y1: number; h: boolean }
+  const segs: Seg[] = [
+    ...rules.h.map((r) => ({ x0: r.x0, x1: r.x1, y0: r.y, y1: r.y, h: true })),
+    ...rules.v.map((r) => ({ x0: r.x, x1: r.x, y0: r.y0, y1: r.y1, h: false }))
+  ]
+  const TOL = 2
+  const parent = segs.map((_, k) => k)
+  const find = (k: number): number => (parent[k] === k ? k : (parent[k] = find(parent[k]!)))
+  for (let a = 0; a < segs.length; a++) {
+    for (let b = a + 1; b < segs.length; b++) {
+      const p = segs[a]!
+      const q = segs[b]!
+      if (p.x0 <= q.x1 + TOL && q.x0 <= p.x1 + TOL && p.y0 <= q.y1 + TOL && q.y0 <= p.y1 + TOL) parent[find(a)] = find(b)
+    }
+  }
+  const groups = new Map<number, Seg[]>()
+  segs.forEach((sg, k) => groups.set(find(k), [...(groups.get(find(k)) ?? []), sg]))
+  const distinct = (values: number[]): number[] => {
+    const out: number[] = []
+    for (const v of [...values].sort((a, b) => a - b)) if (out.length === 0 || v - out[out.length - 1]! > TOL) out.push(v)
+    return out
+  }
+  const boxes: TableBox[] = []
+  for (const group of groups.values()) {
+    const ys = distinct(group.filter((g) => g.h).map((g) => g.y0)).reverse()
+    const xs = distinct(group.filter((g) => !g.h).map((g) => g.x0))
+    if (ys.length >= 3 && xs.length >= 3) boxes.push({ ys, xs }) // 3 lines = 2 rows / 2 columns
+  }
+  return boxes
+}
+
 // ---------- 5. text joining ----------
 
 const TRAILING_PUNCT_RE = /[.,;:?!)\]”’」』>]+$/
@@ -273,7 +344,10 @@ export type WrapMode = 'word' | 'char'
  * inside text ("char", no space)? Decided from the characters that end full-width lines: with word
  * wrapping they are word endings (particles, verb endings, punctuation) far more often than chance.
  */
-export function detectWrapMode(lineEnds: string[]): WrapMode {
+export function detectWrapMode(lineEnds: string[], shortfalls: number[] = []): WrapMode {
+  // Character wrapping fills every line up to the last character that fits, so no wrapped line stops more
+  // than one character short of the margin. A ragged right edge can therefore only be word wrapping.
+  if (shortfalls.length >= 8 && shortfalls.filter((x) => x < 1.05).length / shortfalls.length < 0.8) return 'word'
   const samples = lineEnds.filter((t) => HANGUL_RE.test(t.slice(-1)) || TRAILING_PUNCT_RE.test(t))
   if (samples.length < 8) return 'word'
   const hits = samples.filter((t) => TRAILING_PUNCT_RE.test(t) || PARTICLES.has(t[t.length - 1]!)).length
@@ -343,11 +417,12 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
 
   // heading levels from the distinct larger sizes (largest = level 1)
   const sizeKey = (l: Line): number => Math.round(l.fs * 2) / 2
-  const headingSizes = [...new Set(body.filter((l) => l.fs >= bodyFs * 1.15 && l.text.length <= 90).map(sizeKey))]
+  const headingSizes = [...new Set(body.filter((l) => l.fs >= bodyFs * 1.1 && l.text.length <= 90 && !l.glyphMarker).map(sizeKey))]
     .sort((a, b) => b - a)
     .slice(0, 4)
   const headingLevel = (l: Line): number => {
-    if (l.text.length > 90 || detectMarker(l.text)) return 0
+    // a numbered line is a heading only when it is set larger than the body ("1. Overview" as a chapter title)
+    if (l.text.length > 90 || l.glyphMarker || (markerOf(l) && l.fs < bodyFs * 1.1)) return 0
     const idx = headingSizes.indexOf(sizeKey(l))
     return idx >= 0 ? idx + 1 : 0
   }
@@ -364,15 +439,6 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
   }
   const isFull = (l: Line): boolean => l.x1 >= (rightMargin.get(l.page) ?? docRight) - 4 * l.fs
 
-  // word wrapping or character wrapping? (decides whether a line break gets a space)
-  const ends: string[] = []
-  for (let k = 0; k + 1 < body.length; k++) {
-    const a = body[k]!
-    const b = body[k + 1]!
-    if (a.page === b.page && a.x1 >= (rightMargin.get(a.page) ?? docRight) - 2 * a.fs && !cellular(a) && !detectMarker(b.text)) ends.push(a.text)
-  }
-  const wrapMode = detectWrapMode(ends)
-
   // typical line pitch inside a paragraph: gaps that follow a clearly full line
   const gaps: number[] = []
   for (let k = 0; k + 1 < body.length; k++) {
@@ -382,9 +448,100 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
   }
   const pitch = gaps.length ? median(gaps) : bodyFs * 1.8
 
-  // list nesting from the indents of marker lines
+  // word wrapping or character wrapping? (decides whether a line break gets a space)
+  const ends: string[] = []
+  const shortfalls: number[] = []
+  for (let k = 0; k + 1 < body.length; k++) {
+    const a = body[k]!
+    const b = body[k + 1]!
+    if (a.page !== b.page || cellular(a) || markerOf(b)) continue
+    const R = rightMargin.get(a.page) ?? docRight
+    if (a.x1 >= R - 2 * a.fs) ends.push(a.text)
+    // a line that is followed by the rest of its paragraph and is not short for another reason
+    if (a.text.length >= 12 && a.x1 >= R - 8 * a.fs && a.y - b.y <= pitch * 1.35 && Math.abs(a.fs - b.fs) < 1) shortfalls.push(Math.max(0, (R - a.x1) / a.fs))
+  }
+  const wrapMode = detectWrapMode(ends, shortfalls)
+
+
+  // Bordered tables: the border lines give exact rows and columns, so cell text that wraps over several
+  // lines stays in its cell. Tables without borders fall back to the column-alignment rule further down.
+  const consumed = new Set<Line>()
+  const tableAt = new Map<Line, Extract<Block, { kind: 'table' }>>()
+  for (let pg = 0; pg < pages.length; pg++) {
+    for (const box of findTableBoxes(pages[pg]!.rules)) {
+      const top = box.ys[0]!
+      const bottom = box.ys[box.ys.length - 1]!
+      const left = box.xs[0]!
+      const right = box.xs[box.xs.length - 1]!
+      const inside = body.filter((l) => l.page === pg && l.y <= top + 2 && l.y >= bottom - 2 && l.segs.some((sg) => (sg.x0 + sg.x1) / 2 >= left - 2 && (sg.x0 + sg.x1) / 2 <= right + 2))
+      if (inside.length === 0) continue
+      const rows = box.ys.length - 1
+      const cols = box.xs.length - 1
+      const cells: string[][][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => []))
+      const rowOf = (y: number): number => {
+        for (let r = 0; r < rows; r++) if (y <= box.ys[r]! + 2 && y > box.ys[r + 1]! - 2) return r
+        return -1
+      }
+      for (const l of inside) {
+        const r = rowOf(l.y)
+        if (r < 0) continue
+        for (const sg of l.segs) {
+          const cx = (sg.x0 + sg.x1) / 2
+          let c = 0
+          for (let k = 0; k < cols; k++) if (cx >= box.xs[k]! - 2) c = k
+          cells[r]![c]!.push(sg.text)
+        }
+      }
+      const grid = cells.map((row) => row.map((pieces) => pieces.reduce((acc, t) => joinWrapped(acc, t, wrapMode), '')))
+      const filled = grid.filter((row) => row.some((c) => c !== ''))
+      if (filled.length < 2) continue
+      for (const l of inside) consumed.add(l)
+      tableAt.set(inside[0]!, { kind: 'table', rows: filled })
+    }
+  }
+
+  // Left edge of ordinary paragraphs: the most common start x of body-size text.
+  const startWeight = new Map<number, number>()
+  for (const l of body) {
+    if (consumed.has(l) || Math.abs(l.fs - bodyFs) >= 1 || markerOf(l) || cellular(l)) continue
+    const key = Math.round(l.x0)
+    startWeight.set(key, (startWeight.get(key) ?? 0) + l.text.length)
+  }
+  let baseX = Math.min(...body.map((l) => l.x0))
+  best = -1
+  for (const [x, w] of startWeight) {
+    if (w > best) {
+      best = w
+      baseX = x
+    }
+  }
+  const isCentered = (l: Line): boolean => {
+    const w = pages[l.page]?.width ?? 595
+    return Math.abs((l.x0 + l.x1) / 2 - w / 2) < 2 * l.fs && l.x1 - l.x0 < 0.7 * (w - 2 * baseX)
+  }
+  /**
+   * A bullet drawn as a picture leaves no text, only an indented line. An indented line starts a bullet unless
+   * it is a first-line indent (the next line of the same paragraph is back at the left edge) or is centred.
+   */
+  const isImplicitBullet = (k: number): boolean => {
+    const l = body[k]!
+    if (consumed.has(l) || markerOf(l) || cellular(l) || headingLevel(l) > 0 || isCentered(l)) return false
+    if (l.fs >= bodyFs * 1.1 || l.x0 < baseX + 1.2 * bodyFs || l.x0 > baseX + 8 * bodyFs) return false
+    const nxt = body[k + 1]
+    const backAtEdge = nxt && nxt.page === l.page && nxt.x0 < baseX + 0.6 * bodyFs && l.y - nxt.y <= pitch * 1.35 && isFull(l)
+    return !backAtEdge
+  }
+
+  // A picture bullet has no marker, so its text starts one marker-width further right than a real marker
+  // line at the same nesting level. `hang` (marker to text distance, measured on glyph markers) corrects that.
+  const hangs = body.filter((l) => l.glyphMarker && l.segs[0]).map((l) => l.segs[0]!.x0 - l.x0).filter((h) => h > 0)
+  const hang = hangs.length ? median(hangs) : 1.15 * bodyFs
+  const levelXOf = (l: Line): number => (markerOf(l) ? l.x0 : l.x0 - hang)
+
+  // list nesting from the indents of marker lines and indented bullets
   const centers: number[] = []
-  for (const x of body.filter((l) => detectMarker(l.text)).map((l) => l.x0).sort((a, b) => a - b)) {
+  const levelXs = body.filter((l, k) => markerOf(l) || isImplicitBullet(k)).map(levelXOf).sort((a, b) => a - b)
+  for (const x of levelXs) {
     if (centers.length === 0 || x - centers[centers.length - 1]! > 0.9 * bodyFs) centers.push(x)
   }
   const levelOf = (x: number): number => {
@@ -405,6 +562,18 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
   let i = 0
   while (i < body.length) {
     const line = body[i]!
+
+    const bordered = tableAt.get(line)
+    if (bordered) {
+      close()
+      blocks.push(bordered)
+      i++
+      continue
+    }
+    if (consumed.has(line)) {
+      i++
+      continue
+    }
 
     // table: a run of multi-cell lines
     if (cellular(line)) {
@@ -446,10 +615,11 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
       continue
     }
 
-    const marker = detectMarker(line.text)
+    const marker = markerOf(line)
+    const implicit = !marker && isImplicitBullet(i)
 
     // continuation of the open paragraph / list item?
-    if (open && !marker) {
+    if (open && !marker && !(implicit && !open.hasMarker && open.x0 !== line.x0)) {
       const prev = open.lines[open.lines.length - 1]!
       const gap = prev.page === line.page ? prev.y - line.y : pitch
       const firstLineIndent = !open.hasMarker && line.x0 > open.x0 + 1.2 * bodyFs
@@ -465,12 +635,12 @@ export function layoutPdf(pages: PdfPageInput[]): PdfLayoutResult {
     }
 
     close()
-    if (marker) {
+    if (marker || implicit) {
       const block: Block = {
         kind: 'item',
-        level: levelOf(line.x0),
-        ordered: marker.kind === 'ordered' ? marker.number : null,
-        text: marker.rest
+        level: levelOf(levelXOf(line)),
+        ordered: marker?.kind === 'ordered' ? marker.number : null,
+        text: marker ? marker.rest : line.text
       }
       blocks.push(block)
       open = { block, lines: [line], hasMarker: true, x0: line.x0 }
@@ -494,6 +664,36 @@ function render(blocks: Block[], pageCount: number, chars: number, removed: numb
   let tables = 0
   let listItems = 0
   let prevKind: Block['kind'] | null = null
+
+  // A list starts at its shallowest item, and a level never jumps more than one step deeper.
+  for (let k = 0; k < blocks.length; ) {
+    if (blocks[k]!.kind !== 'item') {
+      k++
+      continue
+    }
+    let end = k
+    while (end < blocks.length && blocks[end]!.kind === 'item') end++
+    const run = blocks.slice(k, end) as Array<Extract<Block, { kind: 'item' }>>
+    const min = Math.min(...run.map((b) => b.level))
+    let prev = -1
+    for (const b of run) {
+      b.level = Math.min(b.level - min, prev + 1)
+      prev = b.level
+    }
+    k = end
+  }
+
+  // numbers: real ones are kept, glyph markers (number 0) are counted per nesting level
+  const counters: number[] = []
+  for (const b of blocks) {
+    if (b.kind !== 'item') {
+      counters.length = 0
+      continue
+    }
+    counters.length = b.level + 1
+    if (b.ordered === 0) b.ordered = counters[b.level] = (counters[b.level] ?? 0) + 1
+    else counters[b.level] = b.ordered ?? 0
+  }
 
   for (const b of blocks) {
     let piece: string

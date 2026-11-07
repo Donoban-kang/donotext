@@ -44,4 +44,20 @@ describe('sample official-document PDF (real pdfjs + layout)', () => {
   it('rejects a file that is not a PDF', async () => {
     await expect(extractPdfPages(new Uint8Array([1, 2, 3, 4]), { assetDir, maxPages: 5 })).rejects.toBeTruthy()
   })
+
+  it('rebuilds a bordered table with wrapped cells and a bullet list from a real browser-made PDF', async () => {
+    const wrapped = new Uint8Array(readFileSync(join(__dirname, '../fixtures/import/table-wrap.pdf')))
+    const { pages } = await extractPdfPages(wrapped, { assetDir, maxPages: 5 })
+    expect(pages[0]!.rules!.h.length).toBeGreaterThan(3) // the borders were found in the drawing commands
+    const md = layoutPdf(pages).markdown
+    expect(md).toContain('| 안내 문구 | 하는 일 |')
+    const rows = md.split('\n').filter((l) => l.startsWith('|'))
+    // header, separator and three body rows: wrapped cell lines did not become extra rows
+    expect(rows.length).toBeGreaterThanOrEqual(5)
+    expect(rows.length).toBeLessThanOrEqual(6)
+    expect(rows.find((l) => l.includes('타일 높이가'))).toMatch(/타일 높이가.*그래도 사용할까요\?.*\|.*우리 타일이 작으면.*다시 나오므로.*화면을 키웁니다/)
+    expect(md.split('\n\n').pop()).toContain('표 아래 문단입니다.')
+    expect(md).toMatch(/^- 첫째 항목입니다$/m)
+    expect(md).toMatch(/^- 둘째 항목입니다$/m)
+  })
 })

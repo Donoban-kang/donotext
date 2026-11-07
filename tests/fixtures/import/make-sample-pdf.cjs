@@ -24,5 +24,17 @@ const path = require('node:path')
   </body></html>`
   await p.setContent(html)
   await p.pdf({ path: path.join(__dirname, 'sample-gongmun.pdf'), format: 'A4', margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' } })
+  // A bordered table whose cells wrap over several lines, a merged category cell, and a bulleted list.
+  const wrap = `<html><body style="font-family:Unifont;font-size:14px;line-height:1.6;margin:0">
+  <h2>안내 문구</h2>
+  <ul><li>첫째 항목입니다</li><li>둘째 항목입니다</li></ul>
+  <table border="1" style="border-collapse:collapse;width:100%">
+  <tr><th style="width:30%">안내 문구</th><th>하는 일</th></tr>
+  <tr><td>타일 높이가 작습니다. 그래도 사용할까요?</td><td>우리 타일이 작으면 판단이 부정확할 수 있습니다. 가능하면 No 단추를 누르십시오. 영역 지정 화면이 다시 나오므로 닫고 화면을 키웁니다.</td></tr>
+  <tr><td rowspan="2">관리</td><td>첫째 행 설명</td></tr>
+  <tr><td>둘째 행 설명</td></tr>
+  </table><p>표 아래 문단입니다.</p></body></html>`
+  await p.setContent(wrap)
+  await p.pdf({ path: path.join(__dirname, 'table-wrap.pdf'), format: 'A4', margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' } })
   await b.close()
 })()
