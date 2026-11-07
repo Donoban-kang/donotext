@@ -1,6 +1,7 @@
 import { open, stat } from 'node:fs/promises'
 import { basename, isAbsolute } from 'node:path'
 import type { DropEntry } from '../../shared/fsTypes'
+import { importFormatOf } from '../../shared/importTypes'
 import { looksLikeText } from '../../shared/textFormat'
 import type { FsService } from './fsService'
 
@@ -36,6 +37,13 @@ export async function openDropped(paths: unknown, fs: FsService, grant: (path: s
         await grant(p)
         out.push({ kind: 'folder', root: p })
       } else if (info.isFile()) {
+        // PDF and Office documents are binary, but they can be converted: offer them for import instead of refusing
+        const format = importFormatOf(name)
+        if (format && format !== 'html') {
+          await grant(p)
+          out.push({ kind: 'importable', path: p, name, format })
+          continue
+        }
         if (await looksBinary(p)) {
           out.push({ kind: 'rejected', name, reason: 'binary' })
           continue

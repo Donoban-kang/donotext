@@ -75,7 +75,7 @@ export function DropZone(): React.ReactElement | null {
           <span>{t('dropHint')}</span>
         </div>
         <div className="dn-drop-badges">
-          {['.md', '.markdown', '.txt', '.json'].map((ext) => (
+          {['.md', '.markdown', '.txt', '.json', '.pdf', '.docx', '.xlsx', '.pptx'].map((ext) => (
             <span key={ext} className="dn-drop-badge">
               {ext}
             </span>

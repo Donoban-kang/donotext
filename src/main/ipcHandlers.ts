@@ -5,6 +5,7 @@ import { IPC } from '../shared/ipc'
 import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
 import type { ImageService } from './services/imageService'
+import type { ImportService } from './services/importService'
 import type { SessionService } from './services/sessionService'
 import { openDropped } from './services/dropService'
 import { checkForUpdate, type FetchLike } from './services/updateService'
@@ -28,10 +29,11 @@ export interface IpcDeps {
   watcher: WatchService
   images: ImageService
   exports: ExportService
+  imports: ImportService
   getWindow: () => BrowserWindow | null
 }
 
-export function registerIpc({ fs, sessions, watcher, images, exports, getWindow }: IpcDeps): void {
+export function registerIpc({ fs, sessions, watcher, images, exports, imports, getWindow }: IpcDeps): void {
   const markdownFilter = { name: 'Markdown', extensions: MARKDOWN_EXTENSIONS.map((e) => e.slice(1)) }
   const allFilter = { name: 'All Files', extensions: ['*'] }
 
@@ -83,6 +85,24 @@ export function registerIpc({ fs, sessions, watcher, images, exports, getWindow 
 
   ipcMain.handle(IPC.getAppInfo, (): AppInfo => ({ name: APP_NAME, version: app.getVersion(), author: AUTHOR, repoUrl: REPO_URL, releasesUrl: RELEASES_URL }))
   ipcMain.handle(IPC.openDropped, (_e, paths) => openDropped(paths, fs, (p) => sessions.grant(p)))
+  const labelsOf = (v: unknown): { slide: string; notes: string } => {
+    const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>
+    return { slide: str(o['slide'], 'labels.slide', 40), notes: str(o['notes'], 'labels.notes', 40) }
+  }
+  ipcMain.handle(IPC.importDialog, async (_e, labels) => {
+    const checked = labelsOf(labels)
+    const win = getWindow()
+    const opts = {
+      properties: ['openFile'] as Array<'openFile'>,
+      filters: [{ name: 'Documents', extensions: ['pdf', 'docx', 'xlsx', 'pptx', 'html', 'htm'] }, allFilter]
+    }
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (res.canceled || res.filePaths.length === 0) return null
+    const path = res.filePaths[0]
+    await sessions.grant(path) // choosing the file is the user's approval to read it
+    return imports.importFile(path, checked)
+  })
+  ipcMain.handle(IPC.importFile, (_e, p, labels) => imports.importFile(str(p, 'path'), labelsOf(labels)))
   ipcMain.handle(IPC.checkUpdate, () => checkForUpdate(app.getVersion(), net.fetch as unknown as FetchLike))
 
   ipcMain.on(IPC.watch, (_e, paths: unknown) => {

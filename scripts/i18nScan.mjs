@@ -2,7 +2,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const HANGUL = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7A3]/
-const ALLOWED = new Set(['src/renderer/app/i18n/ko.ts'])
+// koreanData.ts holds language data for reading Korean documents (particles, numbering symbols), not UI text.
+const ALLOWED = new Set(['src/renderer/app/i18n/ko.ts', 'src/main/import/koreanData.ts'])
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
