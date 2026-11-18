@@ -52,6 +52,17 @@ describe('openDropped', () => {
     expect(granted).toEqual([pdf, docx]) // granted so the conversion is allowed to read exactly these files
   })
 
+  it('offers pictures for import (text recognition) too', async () => {
+    const png = join(dir, '스캔.PNG')
+    const jpg = join(dir, 'photo.jpeg')
+    await writeFile(png, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00]))
+    await writeFile(jpg, Buffer.from([0xff, 0xd8, 0xff, 0x00]))
+    expect(await openDropped([png, jpg], fs, grant)).toEqual([
+      { kind: 'importable', path: png, name: '스캔.PNG', format: 'image' },
+      { kind: 'importable', path: jpg, name: 'photo.jpeg', format: 'image' }
+    ])
+  })
+
   it('still opens a dropped .html file as text', async () => {
     const html = join(dir, 'page.html')
     await writeFile(html, '<p>hi</p>')
@@ -59,9 +70,9 @@ describe('openDropped', () => {
   })
 
   it('refuses binary files without granting or reading them', async () => {
-    const bin = join(dir, 'pic.png')
+    const bin = join(dir, 'tool.bin')
     await writeFile(bin, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x01]))
-    expect(await openDropped([bin], fs, grant)).toEqual([{ kind: 'rejected', name: 'pic.png', reason: 'binary' }])
+    expect(await openDropped([bin], fs, grant)).toEqual([{ kind: 'rejected', name: 'tool.bin', reason: 'binary' }])
     expect(granted).toEqual([])
   })
 

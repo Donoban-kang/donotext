@@ -117,10 +117,10 @@ describe('layoutPdf: Korean official-document numbering', () => {
     expect(r.markdown.trim().split('\n')).toEqual([
       '1. 관련 근거',
       '2. 점검을 추진합니다.',
-      '    - 가. 점검 기간: 5월',
-      '    - 나. 점검 대상: 전체',
-      '        - 세부 내용입니다',
-      '        - 붙임 참조'
+      '   - 가. 점검 기간: 5월',
+      '   - 나. 점검 대상: 전체',
+      '     - 세부 내용입니다',
+      '     - 붙임 참조'
     ])
     expect(r.stats.listItems).toBe(6)
   })
@@ -157,7 +157,7 @@ describe('layoutPdf: lists from real-world PDFs', () => {
         glyph(0xe073, 160, 57), glyph(0xe094, 160, 64), run('둘째 항목', 160, 69)
       )
     ])
-    expect(r.markdown.trim().split('\n')).toEqual(['1. 첫째 항목', '    1. 하위 하나', '    2. 하위 둘', '2. 둘째 항목'])
+    expect(r.markdown.trim().split('\n')).toEqual(['1. 첫째 항목', '   1. 하위 하나', '   2. 하위 둘', '2. 둘째 항목'])
     expect(r.markdown).not.toMatch(/[\uE000-\uF8FF]/)
     expect(r.warnings).toEqual([])
   })

@@ -11,8 +11,9 @@ function setup() {
   const documents = createDocumentsStore()
   const layout = createLayoutStore()
   const notify = vi.fn()
-  const commands = createCommands({ api, documents, layout, confirmUnsaved: async () => 'cancel', notify, flush: () => undefined })
-  return { controller, documents, layout, commands, notify }
+  const setBusy = vi.fn()
+  const commands = createCommands({ api, documents, layout, confirmUnsaved: async () => 'cancel', notify, setBusy, flush: () => undefined })
+  return { api, controller, documents, layout, commands, notify, setBusy }
 }
 
 const good = (over: Partial<Extract<ImportOutcome, { ok: true }>> = {}): ImportOutcome => ({
@@ -72,7 +73,7 @@ describe('importDocument (toolbar button)', () => {
     c.controller.queueImport(good({ markdown: '', warnings: [{ code: 'noText' }], baseName: '스캔본' }))
     await c.commands.importDocument()
     expect(docsOf(c)).toHaveLength(0)
-    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('OCR') }))
+    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('글자를 찾지 못했어요') }))
   })
 
   it('names the file in each failure message', async () => {
@@ -114,5 +115,52 @@ describe('dropping a document on the window', () => {
     await c.commands.openDropped()
     expect(docsOf(c)).toHaveLength(0)
     expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('깨짐.docx') }))
+  })
+})
+
+describe('several files and scanned pages', () => {
+  it('opens one new document per file chosen in the dialog', async () => {
+    const c = setup()
+    c.controller.queueImport([good({ baseName: '하나' }), good({ baseName: '둘', format: 'pdf' }), { ok: false, code: 'unreadable', name: '셋.pdf' }])
+    await c.commands.importDocument()
+    expect(docsOf(c).map((d) => d.name).sort()).toEqual(['둘.md', '하나.md'])
+    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('셋.pdf') }))
+  })
+
+  it('shows the page being read while converting, and removes the card when done', async () => {
+    const c = setup()
+    const real = c.api.importFile
+    c.api.importFile = async (path, labels) => {
+      c.controller.emitImportProgress({ name: '스캔.pdf', done: 2, total: 5 })
+      return real(path, labels)
+    }
+    c.controller.queueDrop(['/w/스캔.pdf'])
+    c.controller.queueImport(good({ format: 'pdf', baseName: '스캔' }))
+    await c.commands.openDropped()
+    expect(c.setBusy).toHaveBeenCalledWith('"스캔.pdf" 글자 인식 중… 2/5쪽')
+    expect(c.setBusy).toHaveBeenLastCalledWith(null)
+  })
+
+  it('ignores progress that arrives when nothing is being converted', () => {
+    const c = setup()
+    c.controller.emitImportProgress({ name: 'x.pdf', done: 1, total: 2 })
+    expect(c.setBusy).not.toHaveBeenCalled()
+  })
+
+  it('explains text recognition in the notices: pages read, doubtful lines highlighted', async () => {
+    const c = setup()
+    c.controller.queueImport(good({ format: 'pdf', warnings: [{ code: 'ocrUsed', count: 3 }, { code: 'ocrUncertain', count: 12 }, { code: 'ocrFailed', count: 1 }] }))
+    await c.commands.importDocument()
+    const messages = c.notify.mock.calls.map(([t]) => t.message as string)
+    expect(messages.some((m) => m.includes('3쪽') && m.includes('글자 인식'))).toBe(true)
+    expect(messages.some((m) => m.includes('12개') && m.includes('형광펜'))).toBe(true)
+    expect(messages.some((m) => m.includes('1쪽') && m.includes('읽지 못해'))).toBe(true)
+  })
+
+  it('says so when text recognition is not available', async () => {
+    const c = setup()
+    c.controller.queueImport({ ok: false, code: 'ocrUnavailable', name: '사진.png' })
+    await c.commands.importDocument()
+    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'error', message: expect.stringContaining('글자 인식(OCR)을 쓸 수 없어서') }))
   })
 })

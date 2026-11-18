@@ -107,7 +107,14 @@ if (gotLock) void app.whenReady().then(() => {
   // In the installed app pdfjs is unpacked next to app.asar: its files are read by a worker thread, which
   // cannot open files inside the archive.
   const pdfjsDir = dirname(createRequire(__filename).resolve('pdfjs-dist/package.json')).replace(/app\.asar(?=[\\/])/, 'app.asar.unpacked')
-  const importService = new ImportService({ run: runInWorker, pdfjsDir, isAllowed: (p) => fsService.isAllowed(p) })
+  // Text recognition (OCR): the engine's worker script and the language data. All of it is read from disk, so the
+  // packed copy under app.asar is mapped to its unpacked twin; the language data is shipped as a resource folder.
+  const unpacked = (p: string): string => p.replace(/app\.asar(?=[\\/])/, 'app.asar.unpacked')
+  const ocr = {
+    tesseractDir: unpacked(dirname(createRequire(__filename).resolve('tesseract.js/package.json'))),
+    langDir: app.isPackaged ? join(process.resourcesPath, 'ocr') : join(app.getAppPath(), 'resources', 'ocr')
+  }
+  const importService = new ImportService({ run: runInWorker, pdfjsDir, ocr, isAllowed: (p) => fsService.isAllowed(p) })
   protocol.handle(IMAGE_SCHEME, (request) => handleImageRequest(request, fsService))
   registerIpc({
     fs: fsService,

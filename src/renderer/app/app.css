@@ -122,6 +122,9 @@ body {
 .dn-toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
 .dn-toast { padding: 10px 14px; border-radius: 12px; background: #2b2f38; color: #fff; max-width: 380px; font-size: 13px; line-height: 1.5; cursor: pointer; box-shadow: var(--dn-shadow); }
 .dn-toast-error { background: #c93a3f; }
+.dn-busy { display: flex; align-items: center; gap: 10px; cursor: default; }
+.dn-spinner { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: dn-spin 0.9s linear infinite; }
+@keyframes dn-spin { to { transform: rotate(360deg); } }
 .dn-toast-warning { background: #8a6d00; }
 
 /* ---------- Compare tab ---------- */
@@ -132,6 +135,7 @@ body {
 .dn-compare-host .cm-mergeView { height: auto; }
 
 @media (prefers-reduced-motion: reduce) {
+  .dn-spinner { animation-duration: 3s; }
   * { transition: none !important; }
 }
 

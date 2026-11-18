@@ -11,7 +11,7 @@ beforeEach(async () => {
 })
 afterEach(() => rm(dir, { recursive: true, force: true }))
 
-const labels = { slide: 'Slide', notes: 'Notes' }
+const labels = { slide: 'Slide', notes: 'Notes', ocrNote: 'OCR' }
 const converted = { markdown: '# 안녕\n', warnings: [], stats: { chars: 5, headings: 1, tables: 0, listItems: 0 } }
 
 function service(run: JobRunner, allowed: (p: string) => boolean = () => true) {

@@ -26,7 +26,7 @@ test('dragging files over the window shows the hint, and leaving hides it', asyn
   await expect(page.getByTestId('drop-overlay')).toBeVisible()
   const overlay = page.getByTestId('drop-overlay')
   await expect(overlay).toContainText('여기에 놓으면 donotext로 열려요')
-  await expect(overlay.locator('.dn-drop-badge')).toHaveText(['.md', '.markdown', '.txt', '.json', '.pdf', '.docx', '.xlsx', '.pptx', '폴더'])
+  await expect(overlay.locator('.dn-drop-badge')).toHaveText(['.md', '.markdown', '.txt', '.json', '.pdf', '.docx', '.xlsx', '.pptx', '.png', '.jpg', '폴더'])
   await page.evaluate(() => {
     const dt = new DataTransfer()
     dt.items.add(new File(['x'], 'a.md'))
@@ -72,9 +72,9 @@ test('a dropped folder opens in the sidebar tree', async ({ page }) => {
 })
 
 test('a binary file is refused with a notice and does not become a tab', async ({ page }) => {
-  await openSeed(page, { '/w/pic.png': 'PNG\u0000\u0001', '/w/a.md': '본문\n' })
-  await dropFiles(page, ['/w/pic.png', '/w/a.md'])
-  await expect(page.getByTestId('toast').first()).toContainText('pic.png')
+  await openSeed(page, { '/w/tool.bin': 'BIN\u0000\u0001', '/w/a.md': '본문\n' })
+  await dropFiles(page, ['/w/tool.bin', '/w/a.md'])
+  await expect(page.getByTestId('toast').first()).toContainText('tool.bin')
   await expect(page.getByTestId('tab')).toHaveCount(1)
 })
 

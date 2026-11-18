@@ -4,7 +4,7 @@ import type { ImportJob } from '../../src/main/import/convert'
 import { hostWorker } from '../../src/main/import/workerHost'
 import { ImportJobError, ImportTimeoutError } from '../../src/main/services/importService'
 
-const job: ImportJob = { format: 'docx', bytes: new Uint8Array([1]), labels: { slide: 's', notes: 'n' }, pdfjsDir: '/x' }
+const job: ImportJob = { format: 'docx', bytes: new Uint8Array([1]), labels: { slide: 's', notes: 'n', ocrNote: 'o' }, pdfjsDir: '/x', ocr: null }
 const run = (code: string, limits?: ConstructorParameters<typeof Worker>[1]) =>
   hostWorker((j) => new Worker(code, { eval: true, workerData: j, ...limits }))
 

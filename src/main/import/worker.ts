@@ -16,6 +16,8 @@ async function main(): Promise<void> {
     const result = await runConversion(workerData as ImportJob, (done, total) => parentPort?.postMessage({ progress: { done, total } } satisfies WorkerMessage))
     message = { ok: true, result }
   } catch (e) {
+    // set DONOTEXT_DEBUG=1 to see why a conversion failed (the user only sees a short message)
+    if (process.env['DONOTEXT_DEBUG']) console.error('[import worker]', e)
     message = { ok: false, code: e instanceof JobFailure ? e.code : 'unreadable' }
   }
   parentPort?.postMessage(message)

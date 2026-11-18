@@ -177,6 +177,8 @@ export async function runConversion(job: ImportJob, onProgress?: ProgressFn): Pr
         return await convertImage(job, onProgress)
     }
   } catch (e) {
+    // set DONOTEXT_DEBUG=1 to see the original error (the user only sees a short message)
+    if (process.env['DONOTEXT_DEBUG']) console.error('[import]', e)
     if (e instanceof JobFailure) throw e
     if (e instanceof PdfEncryptedError) throw new JobFailure('encrypted')
     if (e instanceof UnsafeArchiveError) throw new JobFailure('tooLarge')

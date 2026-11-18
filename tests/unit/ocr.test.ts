@@ -136,7 +136,7 @@ describe('OCR of scans (real engine)', () => {
     expect(r.markdown).toContain('AICBM')
     expect(r.markdown).toContain('2026. 5. 1.')
     expect(r.markdown).toMatch(/^1\. 관련/m)
-    expect(r.markdown).toMatch(/^ {4}- 가\. 점검 기간/m)
+    expect(r.markdown).toMatch(/^ {3}- 가\. 점검 기간/m)
     expect(r.warnings[0]).toEqual({ code: 'ocrUsed', count: 1 })
     expect(steps).toEqual(['0/1', '1/1'])
   }, 60_000)

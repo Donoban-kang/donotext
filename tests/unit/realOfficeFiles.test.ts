@@ -42,7 +42,7 @@ describe('real PowerPoint file', () => {
   it('reads titles, inherited bullets, nested levels, tables, notes and text boxes', async () => {
     const r = await convertPptx(load('real.pptx'), { slide: 'Slide', notes: 'Notes' })
     expect(r.markdown).toContain('## 사업 개요')
-    expect(r.markdown).toContain('- 첫 번째 항목\n    - 하위 항목\n- 두 번째 항목')
+    expect(r.markdown).toContain('- 첫 번째 항목\n  - 하위 항목\n- 두 번째 항목')
     expect(r.markdown).toContain('> **Notes** 발표 때 강조할 점입니다.')
     expect(r.markdown).toContain('| 소프트웨어 | 1,200 |')
     expect(r.markdown).toContain('## Slide 3')
@@ -74,7 +74,7 @@ describe('PDF whose Korean font is not embedded', () => {
     const r = layoutPdf(pages)
     expect(r.markdown).toContain('# 2026년 학교 정보보안 점검 계획')
     expect(r.markdown).toContain('1. 관련: 교육부 정보보안과-1234')
-    expect(r.markdown).toContain('    - 가. 점검 기간: 2026. 5. 1. \\~ 5. 31.')
+    expect(r.markdown).toContain('   - 가. 점검 기간: 2026. 5. 1. \\~ 5. 31.')
     expect(r.warnings).toEqual([])
   })
 })

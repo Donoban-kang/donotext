@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import type { ImportProgress } from '../shared/importTypes'
 import { IPC, type DonotextApi, type FileChange } from '../shared/ipc'
 
 /**
@@ -54,6 +55,13 @@ const api: DonotextApi = {
   },
   importDialog: (labels) => ipcRenderer.invoke(IPC.importDialog, labels),
   importFile: (path, labels) => ipcRenderer.invoke(IPC.importFile, path, labels),
+  onImportProgress: (cb) => {
+    const listener = (_e: unknown, p: ImportProgress): void => cb(p)
+    ipcRenderer.on(IPC.importProgress, listener)
+    return () => {
+      ipcRenderer.removeListener(IPC.importProgress, listener)
+    }
+  },
   checkForUpdate: () => ipcRenderer.invoke(IPC.checkUpdate),
   onCloseRequested: (cb) => {
     const listener = (): void => cb()

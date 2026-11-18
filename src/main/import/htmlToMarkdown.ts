@@ -3,6 +3,7 @@
 
 import TurndownService from 'turndown'
 import { strikethrough } from 'turndown-plugin-gfm'
+import { normalizeListIndent } from './listIndent'
 
 export interface HtmlConversion {
   markdown: string
@@ -98,5 +99,5 @@ export function htmlToMarkdown(html: string): HtmlConversion {
     .replace(/^(#{1,6} \d+)\\\./gm, '$1.')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
-  return { markdown: cleaned ? `${cleaned}\n` : '', imagesSkipped }
+  return { markdown: cleaned ? `${normalizeListIndent(cleaned)}\n` : '', imagesSkipped }
 }

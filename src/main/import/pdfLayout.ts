@@ -664,6 +664,7 @@ function render(blocks: Block[], pageCount: number, chars: number, removed: numb
   let tables = 0
   let listItems = 0
   let prevKind: Block['kind'] | null = null
+  const markerWidths: number[] = [] // width of the marker of the latest item at each nesting level
 
   // A list starts at its shallowest item, and a level never jumps more than one step deeper.
   for (let k = 0; k < blocks.length; ) {
@@ -696,6 +697,7 @@ function render(blocks: Block[], pageCount: number, chars: number, removed: numb
   }
 
   for (const b of blocks) {
+    if (b.kind !== 'item') markerWidths.length = 0
     let piece: string
     switch (b.kind) {
       case 'heading':
@@ -707,8 +709,13 @@ function render(blocks: Block[], pageCount: number, chars: number, removed: numb
         break
       case 'item': {
         listItems++
-        const indent = '    '.repeat(b.level)
-        piece = `${indent}${b.ordered !== null ? `${b.ordered}. ` : '- '}${escapeMarkdown(b.text)}`
+        // A nested item is indented to its parent's content offset ("1. " is 3 wide, "- " is 2): the editor reads
+        // any other width under a numbered parent as one more level of nesting.
+        const marker = b.ordered !== null ? `${b.ordered}. ` : '- '
+        const indent = ' '.repeat(markerWidths.slice(0, b.level).reduce((n, w) => n + w, 0))
+        markerWidths.length = b.level + 1
+        markerWidths[b.level] = marker.length
+        piece = `${indent}${marker}${escapeMarkdown(b.text)}`
         break
       }
       case 'table': {
