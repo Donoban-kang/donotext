@@ -6,7 +6,9 @@ import { IMPORT_MAX_OCR_PAGES, IMPORT_MAX_PDF_PAGES } from '../../shared/importT
 import { convertDocx } from './docxConvert'
 import { convertHtml } from './htmlConvert'
 import { markdownStats } from './markdownStats'
-import { createOcrEngine, mergeHighlights, ocrPageToLayout, type OcrPaths } from './ocr'
+import { decodeToGray, ImageDecodeError } from './decodeImage'
+import { createOcrEngine, mergeHighlights, ocrPageToLayout, recognizeUpright, type OcrEngine, type OcrPaths } from './ocr'
+import { rotate, type Gray } from './pageBitmap'
 import { encodeGrayPng } from './pngEncode'
 import { PdfEncryptedError, PdfSession } from './pdfExtract'
 import { layoutPdf, type PdfPageInput } from './pdfLayout'
@@ -40,6 +42,14 @@ export type ProgressFn = (done: number, total: number) => void
 const SCAN_MIN_COVERAGE = 0.4
 const SCAN_MAX_CHARS = 10
 
+/** Reads a page picture, turning it if it was scanned sideways. */
+function readGray(engine: OcrEngine, gray: Gray) {
+  return recognizeUpright((degrees) => {
+    const turned = rotate(gray, degrees)
+    return engine.recognize(encodeGrayPng(turned.width, turned.height, turned.data))
+  })
+}
+
 const textChars = (p: PdfPageInput): number => p.items.reduce((n, it) => n + it.str.trim().length, 0)
 
 function withNote(markdown: string, note: string): string {
@@ -69,7 +79,7 @@ async function convertPdf(job: ImportJob, onProgress?: ProgressFn): Promise<Conv
         for (const i of todo) {
           const gray = await session.pageGray(i)
           if (gray) {
-            const result = await engine.recognize(encodeGrayPng(gray.width, gray.height, gray.data))
+            const result = await readGray(engine, gray)
             const laid = ocrPageToLayout(result)
             read.set(i, laid.input)
             uncertain += laid.uncertain
@@ -129,10 +139,11 @@ async function convertPdf(job: ImportJob, onProgress?: ProgressFn): Promise<Conv
 
 async function convertImage(job: ImportJob, onProgress?: ProgressFn): Promise<Converted> {
   if (!job.ocr) throw new JobFailure('ocrUnavailable')
+  const gray = decodeToGray(job.bytes) // fails early (before the engine starts) on a broken or unsupported picture
   onProgress?.(0, 1)
   const engine = await createOcrEngine(job.ocr)
   try {
-    const result = await engine.recognize(job.bytes)
+    const result = await readGray(engine, gray)
     const laid = ocrPageToLayout(result)
     const laidOut = layoutPdf([laid.input])
     const warnings: ImportWarning[] = []
@@ -169,6 +180,7 @@ export async function runConversion(job: ImportJob, onProgress?: ProgressFn): Pr
     if (e instanceof JobFailure) throw e
     if (e instanceof PdfEncryptedError) throw new JobFailure('encrypted')
     if (e instanceof UnsafeArchiveError) throw new JobFailure('tooLarge')
+    if (e instanceof ImageDecodeError) throw new JobFailure('unreadable')
     throw new JobFailure('unreadable')
   }
 }

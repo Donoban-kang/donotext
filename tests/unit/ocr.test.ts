@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { runConversion, type ImportJob } from '../../src/main/import/convert'
-import { isUncertain, mergeHighlights, ocrPageToLayout, type OcrLine, type OcrPage } from '../../src/main/import/ocr'
+import { isUncertain, mergeHighlights, mergeWordsByLineText, ocrPageToLayout, pageScore, recognizeUpright, type OcrLine, type OcrPage } from '../../src/main/import/ocr'
 import { layoutPdf } from '../../src/main/import/pdfLayout'
 
 const word = (text: string, x0: number, confidence = 93) => ({ text, confidence, x0, y0: 100, x1: x0 + 10 * text.length, y1: 130 })
@@ -57,6 +57,59 @@ describe('ocrPageToLayout', () => {
   })
 })
 
+describe('mergeWordsByLineText', () => {
+  const w = (text: string, x0: number, x1: number, confidence = 90) => ({ text, confidence, x0, y0: 10, x1, y1: 40 })
+  it('joins syllable "words" wherever the line text has no space', () => {
+    const words = [w('수', 0, 10), w('신', 12, 22), w('교', 40, 50), w('무', 52, 62), w('과', 64, 74, 60), w('장', 76, 86)]
+    const merged = mergeWordsByLineText(words, '수신 교무과장\n')
+    expect(merged.map((m) => m.text)).toEqual(['수신', '교무과장'])
+    expect(merged[1]).toMatchObject({ x0: 40, x1: 86, confidence: 60 }) // box spans the parts, weakest part counts
+  })
+  it('keeps real words and numbers, and handles several spaces', () => {
+    const words = [w('1.', 0, 10), w('관', 20, 30), w('련', 32, 42), w('2024.10.', 60, 100)]
+    expect(mergeWordsByLineText(words, '1.   관련 2024.10.').map((m) => m.text)).toEqual(['1.', '관련', '2024.10.'])
+  })
+  it('leaves the words alone when they cannot be lined up with the text', () => {
+    const words = [w('가', 0, 10), w('나', 12, 22)]
+    expect(mergeWordsByLineText(words, '가나다')).toEqual(words)
+    expect(mergeWordsByLineText(words, '')).toEqual(words)
+  })
+})
+
+describe('recognizeUpright', () => {
+  const pageOf = (conf: number, text = '문서의 본문 글자가 충분히 있는 쪽입니다'): OcrPage => ({ lines: [line(text.split(' ').map((t) => [t, conf] as [string, number]), 100, conf)] })
+  /** A reader that reads well only at one orientation. */
+  function readerAt(good: number): { read: (d: number) => Promise<OcrPage>; tried: number[] } {
+    const tried: number[] = []
+    return { tried, read: async (d) => (tried.push(d), d === good ? pageOf(90) : pageOf(40)) }
+  }
+  it('scores a page by confidence weighted by word length', () => {
+    expect(pageScore({ lines: [] })).toBe(0)
+    expect(pageScore({ lines: [line([['가', 100], ['나나나나', 50]])] })).toBeCloseTo(60, 5)
+  })
+  it('keeps an upright reading without trying other turns', async () => {
+    const r = readerAt(0)
+    await recognizeUpright(r.read)
+    expect(r.tried).toEqual([0])
+  })
+  it('turns a page that reads badly and keeps the best reading', async () => {
+    const r = readerAt(90)
+    expect(pageScore(await recognizeUpright(r.read))).toBe(90)
+    expect(r.tried).toEqual([0, 90]) // stops as soon as a turn reads well
+    const upside = readerAt(180)
+    expect(pageScore(await recognizeUpright(upside.read))).toBe(90)
+    expect(upside.tried).toEqual([0, 90, 270, 180])
+  })
+  it('keeps the first reading when no turn is clearly better, and skips near-empty pages', async () => {
+    const none = readerAt(-1)
+    expect(pageScore(await recognizeUpright(none.read))).toBe(40)
+    expect(none.tried).toEqual([0, 90, 270, 180])
+    const tried: number[] = []
+    await recognizeUpright(async (d) => (tried.push(d), pageOf(10, '가')))
+    expect(tried).toEqual([0])
+  })
+})
+
 describe('mergeHighlights', () => {
   it('joins highlights that follow each other', () => {
     expect(mergeHighlights('==첫 줄== ==둘째 줄== 끝')).toBe('==첫 줄 둘째 줄== 끝')
@@ -86,6 +139,12 @@ describe('OCR of scans (real engine)', () => {
     expect(r.markdown).toMatch(/^ {4}- 가\. 점검 기간/m)
     expect(r.warnings[0]).toEqual({ code: 'ocrUsed', count: 1 })
     expect(steps).toEqual(['0/1', '1/1'])
+  }, 60_000)
+
+  it('reads a page that was scanned sideways', async () => {
+    const r = await runConversion({ ...base, format: 'image', bytes: load('scan-sideways.png') })
+    expect(r.markdown).toContain('AICBM')
+    expect(flat(r.markdown)).toContain(flat('수신 각급 학교장'))
   }, 60_000)
 
   it('reads a scanned PDF whose pages are a JPEG and a 1-bit CCITT picture', async () => {
@@ -122,5 +181,6 @@ describe('OCR of scans (real engine)', () => {
     const blank = await runConversion({ ...base, format: 'pdf', bytes: load('blank.pdf') })
     expect(blank.warnings).toContainEqual({ code: 'noText' })
     await expect(runConversion({ ...base, format: 'image', bytes: new Uint8Array([1, 2, 3, 4]) })).rejects.toMatchObject({ code: 'unreadable' })
+    await expect(runConversion({ ...base, format: 'image', bytes: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), Buffer.alloc(16)]) })).rejects.toMatchObject({ code: 'unreadable' })
   }, 60_000)
 })

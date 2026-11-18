@@ -104,11 +104,7 @@ const EXT_TO_FORMAT: Record<string, ImportFormat> = {
   pptx: 'pptx',
   png: 'image',
   jpg: 'image',
-  jpeg: 'image',
-  bmp: 'image',
-  gif: 'image',
-  tif: 'image',
-  tiff: 'image'
+  jpeg: 'image'
 }
 
 /** The importable format of a file name, or null. Case-insensitive. */
