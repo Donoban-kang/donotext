@@ -5,12 +5,16 @@ import { parentPort, workerData } from 'node:worker_threads'
 import { JobFailure, runConversion, type ImportJob, type JobFailureCode } from './convert'
 import type { Converted } from './types'
 
-export type WorkerMessage = { ok: true; result: Converted } | { ok: false; code: JobFailureCode }
+export type WorkerMessage =
+  | { ok: true; result: Converted }
+  | { ok: false; code: JobFailureCode }
+  | { progress: { done: number; total: number } }
 
 async function main(): Promise<void> {
   let message: WorkerMessage
   try {
-    message = { ok: true, result: await runConversion(workerData as ImportJob) }
+    const result = await runConversion(workerData as ImportJob, (done, total) => parentPort?.postMessage({ progress: { done, total } } satisfies WorkerMessage))
+    message = { ok: true, result }
   } catch (e) {
     message = { ok: false, code: e instanceof JobFailure ? e.code : 'unreadable' }
   }

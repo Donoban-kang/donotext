@@ -61,6 +61,7 @@
     "jszip": "^3.10.2",
     "mammoth": "^1.13.0",
     "pdfjs-dist": "^6.5.438",
+    "tesseract.js": "7.0.0",
     "turndown": "^7.2.5",
     "turndown-plugin-gfm": "^1.0.2"
   },

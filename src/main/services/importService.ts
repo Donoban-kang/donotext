@@ -1,12 +1,13 @@
 import { readFile, stat } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
-import { IMPORT_MAX_BYTES, IMPORT_TIMEOUT_MS, importFormatOf, type ImportOutcome } from '../../shared/importTypes'
+import { IMPORT_MAX_BYTES, IMPORT_TIMEOUT_MS, importFormatOf, type ImportLabels, type ImportOutcome } from '../../shared/importTypes'
 import type { ImportJob, JobFailureCode } from '../import/convert'
-import type { PptxLabels } from '../import/pptxConvert'
+import type { OcrPaths } from '../import/ocr'
 import type { Converted } from '../import/types'
 
 /** Runs a job somewhere that can be stopped (a worker thread). Rejects with `timeout` or a failure code. */
-export type JobRunner = (job: ImportJob, timeoutMs: number) => Promise<Converted>
+/** `timeoutMs` is how long it may go without progress; `onProgress` is called as scanned pages are read. */
+export type JobRunner = (job: ImportJob, timeoutMs: number, onProgress?: (done: number, total: number) => void) => Promise<Converted>
 
 export class ImportTimeoutError extends Error {}
 export class ImportJobError extends Error {
@@ -19,6 +20,8 @@ export interface ImportServiceDeps {
   run: JobRunner
   /** Directory of the installed `pdfjs-dist` package. */
   pdfjsDir: string
+  /** Where the OCR engine and its language data are; null when OCR is not available. */
+  ocr?: OcrPaths | null
   /** Only paths this returns true for may be converted (the files the user dropped or chose). */
   isAllowed: (path: string) => boolean
   timeoutMs?: number
@@ -28,7 +31,7 @@ export class ImportService {
   constructor(private readonly deps: ImportServiceDeps) {}
 
   /** Converts a file the user picked or dropped. Never throws: every problem is an `ok: false` outcome. */
-  async importFile(path: string, labels: PptxLabels): Promise<ImportOutcome> {
+  async importFile(path: string, labels: ImportLabels, onProgress?: (done: number, total: number) => void): Promise<ImportOutcome> {
     const name = basename(path)
     if (!this.deps.isAllowed(path)) return { ok: false, code: 'notAllowed', name }
     const format = importFormatOf(path)
@@ -43,7 +46,7 @@ export class ImportService {
       return { ok: false, code: 'unreadable', name }
     }
     try {
-      const result = await this.deps.run({ format, bytes, labels, pdfjsDir: this.deps.pdfjsDir }, this.deps.timeoutMs ?? IMPORT_TIMEOUT_MS)
+      const result = await this.deps.run({ format, bytes, labels, pdfjsDir: this.deps.pdfjsDir, ocr: this.deps.ocr ?? null }, this.deps.timeoutMs ?? IMPORT_TIMEOUT_MS, onProgress)
       return {
         ok: true,
         format,

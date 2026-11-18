@@ -1,6 +1,6 @@
 import type { AppInfo, UpdateResult } from './appInfo'
 import type { DirEntry, DropEntry, ReadResult } from './fsTypes'
-import type { ImportOutcome } from './importTypes'
+import type { ImportLabels, ImportOutcome, ImportProgress } from './importTypes'
 import type { SessionData } from './session'
 import type { Encoding, Eol } from './textFormat'
 
@@ -36,18 +36,13 @@ export const IPC = {
   openDropped: 'fs:openDropped',
   importDialog: 'import:dialog',
   importFile: 'import:file',
+  importProgress: 'import:progress',
   checkUpdate: 'app:checkUpdate',
   requestClose: 'app:requestClose',
   closeResponse: 'app:closeResponse',
   openPaths: 'app:openPaths',
   takeOpenPaths: 'app:takeOpenPaths'
 } as const
-
-/** Words the converter writes into Markdown itself; they come from the UI language. */
-export interface ImportLabels {
-  slide: string
-  notes: string
-}
 
 export interface DonotextApi {
   openFileDialog(): Promise<ReadResult[]>
@@ -78,10 +73,12 @@ export interface DonotextApi {
    */
   takeDrop(): Promise<DropEntry[]>
   /**
-   * Lets the user pick a PDF, Word, Excel, PowerPoint or HTML file and converts it to Markdown.
-   * Resolves to null when the dialog is cancelled. The original file is only read.
+   * Lets the user pick PDF, Word, Excel, PowerPoint, HTML or picture files and converts them to Markdown,
+   * one after another. Resolves to null when the dialog is cancelled. The original files are only read.
    */
-  importDialog(labels: ImportLabels): Promise<ImportOutcome | null>
+  importDialog(labels: ImportLabels): Promise<ImportOutcome[] | null>
+  /** Progress of the conversion in flight (scanned pages being read by OCR). */
+  onImportProgress(cb: (p: ImportProgress) => void): () => void
   /** Converts a file the user dropped on the window (only paths from a real drop are accepted). */
   importFile(path: string, labels: ImportLabels): Promise<ImportOutcome>
   /** One plain GET to GitHub's latest-release API; never sends document content. */

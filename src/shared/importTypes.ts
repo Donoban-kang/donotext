@@ -1,11 +1,31 @@
 // Types shared by the document -> Markdown import (main process converters and the renderer UI).
 
-export type ImportFormat = 'pdf' | 'docx' | 'html' | 'xlsx' | 'pptx'
+export type ImportFormat = 'pdf' | 'docx' | 'html' | 'xlsx' | 'pptx' | 'image'
 
 /** Limits applied to every conversion (guards against huge or hostile files). */
 export const IMPORT_MAX_BYTES = 100 * 1024 * 1024
 export const IMPORT_MAX_PDF_PAGES = 500
+/** A conversion is stopped after this long without a sign of progress (OCR reports one per page). */
 export const IMPORT_TIMEOUT_MS = 60_000
+/** ...and in any case after this long. */
+export const IMPORT_MAX_TOTAL_MS = 20 * 60_000
+/** Most scanned pages read by OCR in one PDF. */
+export const IMPORT_MAX_OCR_PAGES = 100
+
+/** Words the converter writes into the Markdown itself; they come from the UI language. */
+export interface ImportLabels {
+  slide: string
+  notes: string
+  /** Note placed at the top of a document that was read by OCR. */
+  ocrNote: string
+}
+
+/** Progress of a long conversion (OCR): `done` of `total` pages finished. */
+export interface ImportProgress {
+  name: string
+  done: number
+  total: number
+}
 
 /**
  * Notes about what the converter could not carry over. Codes (not texts) cross the process boundary;
@@ -22,6 +42,12 @@ export type ImportWarningCode =
   | 'rowsTruncated'
   /** Embedded pictures were left out. `count` is how many. */
   | 'imagesSkipped'
+  /** Text was read from pictures by OCR (`count` = pages or pictures). */
+  | 'ocrUsed'
+  /** OCR was unsure about `count` lines; they are highlighted. */
+  | 'ocrUncertain'
+  /** `count` scanned pages could not be read (no usable picture in the file). */
+  | 'ocrFailed'
 
 export interface ImportWarning {
   code: ImportWarningCode
@@ -57,6 +83,7 @@ export type ImportErrorCode =
   | 'encrypted'
   | 'timeout'
   | 'notAllowed'
+  | 'ocrUnavailable'
   | 'failed'
 
 export interface ImportFailure {
@@ -74,7 +101,14 @@ const EXT_TO_FORMAT: Record<string, ImportFormat> = {
   html: 'html',
   htm: 'html',
   xlsx: 'xlsx',
-  pptx: 'pptx'
+  pptx: 'pptx',
+  png: 'image',
+  jpg: 'image',
+  jpeg: 'image',
+  bmp: 'image',
+  gif: 'image',
+  tif: 'image',
+  tiff: 'image'
 }
 
 /** The importable format of a file name, or null. Case-insensitive. */
