@@ -75,7 +75,7 @@ describe('convertPptx', () => {
     )
     expect(r.markdown).toContain('## 사업 개요')
     expect(r.markdown).toContain('- 첫 항목')
-    expect(r.markdown).toContain('    - 하위 항목')
+    expect(r.markdown).toContain('  - 하위 항목')
     expect(r.markdown).toContain('> **Notes** 발표 시 강조할 점')
     expect(r.markdown).toContain('## Slide 2')
     expect(r.markdown).toContain('제목 없는 슬라이드의 글')

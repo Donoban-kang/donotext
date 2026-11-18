@@ -27,6 +27,8 @@ export interface CommandDeps {
   /** Last warning before an original file is overwritten. Defaults to refusing. */
   confirmOverwrite?(name: string): Promise<boolean>
   notify(toast: Toast): void
+  /** Shows (or, with null, hides) a status card for a long job such as text recognition. */
+  setBusy?(message: string | null): void
   /** Pushes pending editor edits into the document store; defaults to the editor registry. */
   flush?: () => void
   /** Called with the path of every file that was opened (recent-files list). */
@@ -48,6 +50,7 @@ const IMPORT_FAIL_KEY: Record<ImportErrorCode, MessageKey> = {
   encrypted: 'importFailEncrypted',
   timeout: 'importFailTimeout',
   notAllowed: 'importFailNotAllowed',
+  ocrUnavailable: 'importFailOcrUnavailable',
   failed: 'importFailFailed'
 }
 
@@ -55,7 +58,10 @@ const IMPORT_WARN_KEY: Partial<Record<ImportWarning['code'], MessageKey>> = {
   garbled: 'importWarnGarbled',
   pagesTruncated: 'importWarnPages',
   rowsTruncated: 'importWarnRows',
-  imagesSkipped: 'importWarnImages'
+  imagesSkipped: 'importWarnImages',
+  ocrUsed: 'importWarnOcrUsed',
+  ocrUncertain: 'importWarnOcrUncertain',
+  ocrFailed: 'importWarnOcrFailed'
 }
 
 /** "제목 3 · 표 1 · 목록 6" - what the converter recognised, so the user can judge the result at a glance. */
@@ -160,7 +166,22 @@ export function createCommands(deps: CommandDeps) {
     docs().setExternal(docId, 'none')
   }
 
-  const importLabels = () => ({ slide: t('importSlideLabel'), notes: t('importNotesLabel') })
+  const importLabels = () => ({ slide: t('importSlideLabel'), notes: t('importNotesLabel'), ocrNote: t('importOcrNote') })
+
+  // While a file is being converted the main process reports each scanned page it finishes.
+  let converting = false
+  api.onImportProgress?.((p) => {
+    if (converting) deps.setBusy?.(t('importProgress', { name: p.name, done: String(p.done), total: String(p.total) }))
+  })
+  async function whileConverting<T>(job: () => Promise<T>): Promise<T> {
+    converting = true
+    try {
+      return await job()
+    } finally {
+      converting = false
+      deps.setBusy?.(null)
+    }
+  }
 
   /** Shows the outcome of a conversion. A good result opens as a new unsaved document; returns true then. */
   function finishImport(outcome: ImportOutcome): boolean {
@@ -189,20 +210,20 @@ export function createCommands(deps: CommandDeps) {
 
   /** The toolbar's "가져오기": pick a PDF or Office document and open its Markdown as a new document. */
   async function importDocument(): Promise<void> {
-    let outcome: ImportOutcome | null
+    let outcomes: ImportOutcome[] | null
     try {
-      outcome = await api.importDialog(importLabels())
+      outcomes = await whileConverting(() => api.importDialog(importLabels()))
     } catch (e) {
       notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
       return
     }
-    if (outcome) finishImport(outcome)
+    for (const outcome of outcomes ?? []) finishImport(outcome)
   }
 
   async function importDropped(path: string, name: string): Promise<boolean> {
     notify({ kind: 'info', message: t('importing', { name }) })
     try {
-      return finishImport(await api.importFile(path, importLabels()))
+      return finishImport(await whileConverting(() => api.importFile(path, importLabels())))
     } catch (e) {
       notify({ kind: 'error', message: t('openFailed', { reason: reason(e) }) })
       return false

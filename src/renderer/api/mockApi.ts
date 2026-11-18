@@ -1,7 +1,7 @@
 import type { UpdateResult } from '../../shared/appInfo'
 import { classifyPath } from '../../shared/fileKind'
 import type { DirEntry, DropEntry, ReadResult } from '../../shared/fsTypes'
-import { importFormatOf, type ImportOutcome } from '../../shared/importTypes'
+import { importFormatOf, type ImportOutcome, type ImportProgress } from '../../shared/importTypes'
 import { IMAGE_EXTENSIONS, type DonotextApi, type FileChange } from '../../shared/ipc'
 import type { SessionData } from '../../shared/session'
 import type { Encoding, Eol } from '../../shared/textFormat'
@@ -29,8 +29,15 @@ export interface MockController {
   closeResponses: boolean[]
   /** Paths the next drop from the file manager will carry (the mock has no real paths to read). */
   queueDrop(paths: string[]): void
-  /** What the next document import (dialog or dropped file) will report; the mock converts nothing itself. */
-  queueImport(outcome: ImportOutcome | null): void
+  /**
+   * What the next document import (dialog or dropped file) will report; the mock converts nothing itself.
+   * For the dialog an array means several chosen files; null means the dialog was cancelled.
+   */
+  queueImport(outcome: ImportOutcome | ImportOutcome[] | null): void
+  /** Pretends the converter finished a scanned page. */
+  emitImportProgress(p: ImportProgress): void
+  /** Makes imports take this long (so a progress card can be seen). */
+  setImportDelay(ms: number): void
   /** Paths the app asked to convert, in order (null for the picker dialog). */
   importCalls: Array<string | null>
   /** What the next "check for updates" will report. */
@@ -70,7 +77,10 @@ export function createMockApi(
   let nextUpdate: UpdateResult = { status: 'latest', current: '0.0.0-dev', latest: '0.0.0-dev' }
   const externalUrls: string[] = []
   let queuedDrop: string[] = []
-  const importQueue: Array<ImportOutcome | null> = []
+  const importQueue: Array<ImportOutcome | ImportOutcome[] | null> = []
+  const progressListeners = new Set<(p: ImportProgress) => void>()
+  let importDelayMs = 0
+  const importWait = (): Promise<void> => (importDelayMs > 0 ? new Promise((r) => setTimeout(r, importDelayMs)) : Promise.resolve())
   const importCalls: Array<string | null> = []
 
   for (const [p, text] of Object.entries(seed)) files.set(p, { text, eol: 'lf', bom: false })
@@ -229,11 +239,21 @@ export function createMockApi(
     },
     async importDialog() {
       importCalls.push(null)
-      return importQueue.shift() ?? null
+      await importWait()
+      const next = importQueue.shift() ?? null
+      return next === null ? null : Array.isArray(next) ? next : [next]
     },
     async importFile(path) {
       importCalls.push(path)
-      return importQueue.shift() ?? { ok: false, code: 'failed', name: path.slice(path.lastIndexOf('/') + 1) }
+      await importWait()
+      const next = importQueue.shift()
+      return (Array.isArray(next) ? next[0] : next) ?? { ok: false, code: 'failed', name: path.slice(path.lastIndexOf('/') + 1) }
+    },
+    onImportProgress(cb) {
+      progressListeners.add(cb)
+      return () => {
+        progressListeners.delete(cb)
+      }
     },
     async getAppInfo() {
       return { name: 'donotext', version: '0.0.0-dev', author: 'Donoban-kang', repoUrl: 'https://github.com/Donoban-kang/donotext', releasesUrl: 'https://github.com/Donoban-kang/donotext/releases' }
@@ -267,6 +287,10 @@ export function createMockApi(
       queuedDrop = paths
     },
     queueImport: (outcome) => void importQueue.push(outcome),
+    emitImportProgress: (p) => progressListeners.forEach((l) => l(p)),
+    setImportDelay: (ms) => {
+      importDelayMs = ms
+    },
     importCalls,
     setUpdateResult: (r) => {
       nextUpdate = r

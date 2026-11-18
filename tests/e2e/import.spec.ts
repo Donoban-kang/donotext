@@ -69,3 +69,37 @@ test('the converted document is unsaved: closing its tab asks whether to save', 
   await page.getByTestId('tab').first().getByRole('button', { name: /닫기/ }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
 })
+
+test('several chosen files each open as their own tab', async ({ page }) => {
+  await openSeed(page, {})
+  await page.evaluate((o) => window.__mock!.queueImport([{ ...(o as object), baseName: '첫째' }, { ...(o as object), baseName: '둘째' }] as never), outcome)
+  await page.getByTestId('import-doc').click()
+  await expect(page.getByTestId('tab')).toHaveCount(2)
+  await expect(page.getByTestId('tab').nth(0)).toContainText('첫째.md')
+  await expect(page.getByTestId('tab').nth(1)).toContainText('둘째.md')
+})
+
+test('a progress card shows the page being read and disappears when the conversion ends', async ({ page }) => {
+  await openSeed(page, {})
+  await page.evaluate((o) => {
+    window.__mock!.setImportDelay(1200)
+    window.__mock!.queueImport({ ...(o as object), format: 'pdf', warnings: [{ code: 'ocrUsed', count: 4 }, { code: 'ocrUncertain', count: 7 }] } as never)
+  }, outcome)
+  await page.getByTestId('import-doc').click()
+  await page.evaluate(() => window.__mock!.emitImportProgress({ name: '스캔.pdf', done: 3, total: 4 }))
+  await expect(page.getByTestId('busy')).toContainText('"스캔.pdf" 글자 인식 중… 3/4쪽')
+  await expect(page.getByTestId('tab')).toHaveCount(1)
+  await expect(page.getByTestId('busy')).toHaveCount(0)
+  await expect(page.locator('.dn-toast').filter({ hasText: '7개를 형광펜으로 표시했어요' })).toHaveCount(1)
+})
+
+test('the converted text keeps the highlights that mark doubtful lines', async ({ page }) => {
+  await openSeed(page, {})
+  await page.evaluate(
+    (o) => window.__mock!.queueImport({ ...(o as object), format: 'pdf', markdown: '> 안내\n\n확실한 줄입니다.\n\n==흐릿한 줄입니다.==\n' } as never),
+    outcome
+  )
+  await page.getByTestId('import-doc').click()
+  await expect(page.locator('.ProseMirror mark')).toHaveText('흐릿한 줄입니다.')
+})
+

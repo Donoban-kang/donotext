@@ -2,7 +2,7 @@ import { buildExportHtml } from '../editor/exportHtml'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
 import { useWorkspace } from '../store/workspace'
-import { useDialogs, useToasts } from '../store/ui'
+import { useBusy, useDialogs, useToasts } from '../store/ui'
 import { t } from './i18n'
 import { createCommands, type Commands } from './commands'
 
@@ -19,6 +19,7 @@ export function getCommands(): Commands {
     confirmOverwrite: (name) =>
       useDialogs.getState().askConfirm({ title: t('forkOverwriteTitle', { name }), body: t('forkOverwriteBody'), okLabel: t('forkOverwriteOk') }),
     notify: (toast) => useToasts.getState().push(toast),
+    setBusy: (message) => useBusy.getState().set(message),
     onFileOpened: (path) => useWorkspace.getState().addRecent(path),
     openFolder: (root) => useWorkspace.getState().setRoot(root),
     buildExport: buildExportHtml

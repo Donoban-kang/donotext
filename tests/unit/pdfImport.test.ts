@@ -16,8 +16,8 @@ describe('sample official-document PDF (real pdfjs + layout)', () => {
     const md = r.markdown
     expect(md).toContain('# 2026년 학교 정보보안 점검 계획')
     expect(md).toContain('1. 관련: 교육부 정보보안과-1234')
-    expect(md).toContain('    - 가. 점검 기간: 2026. 5. 1. \\~ 5. 31.')
-    expect(md).toContain('        - 세부 점검 항목은 붙임 참조')
+    expect(md).toContain('   - 가. 점검 기간: 2026. 5. 1. \\~ 5. 31.')
+    expect(md).toContain('     - 세부 점검 항목은 붙임 참조')
     expect(md).toContain('| 구분 | 항목 | 배점 |')
     expect(md).toContain('| 관리 | 개인정보 처리방침 게시 | 10 |')
     expect(md).toContain('## 제출 방법')

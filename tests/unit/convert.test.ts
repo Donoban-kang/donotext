@@ -7,7 +7,7 @@ import type { ImportFormat } from '../../src/shared/importTypes'
 
 const pdfjsDir = dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'))
 const load = (name: string): Uint8Array => new Uint8Array(readFileSync(join(__dirname, '../fixtures/import', name)))
-const job = (format: ImportFormat, bytes: Uint8Array): ImportJob => ({ format, bytes, labels: { slide: 'Slide', notes: 'Notes' }, pdfjsDir })
+const job = (format: ImportFormat, bytes: Uint8Array): ImportJob => ({ format, bytes, labels: { slide: 'Slide', notes: 'Notes', ocrNote: 'OCR' }, pdfjsDir, ocr: null })
 
 describe('runConversion', () => {
   it('converts each format from its real sample', async () => {

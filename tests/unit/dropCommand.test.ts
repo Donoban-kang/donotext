@@ -59,10 +59,10 @@ describe('openDropped', () => {
   })
 
   it('tells the user about binary files and still opens the rest', async () => {
-    const c = setup({ '/w/a.md': 'a\n', '/w/pic.png': 'PNG\u0000\u0001' })
-    c.controller.queueDrop(['/w/pic.png', '/w/a.md'])
+    const c = setup({ '/w/a.md': 'a\n', '/w/tool.bin': 'BIN\u0000\u0001' })
+    c.controller.queueDrop(['/w/tool.bin', '/w/a.md'])
     await c.commands.openDropped()
-    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning', message: expect.stringContaining('pic.png') }))
+    expect(c.notify).toHaveBeenCalledWith(expect.objectContaining({ kind: 'warning', message: expect.stringContaining('tool.bin') }))
     expect(tabsOf(c.layout)).toHaveLength(1)
   })
 

@@ -2,7 +2,7 @@ import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useDocuments } from '../store/documents'
 import { useLayout } from '../store/layoutStore'
-import { useDialogs, useToasts } from '../store/ui'
+import { useBusy, useDialogs, useToasts } from '../store/ui'
 import { getCommands } from './appCommands'
 import { t } from './i18n'
 
@@ -231,8 +231,15 @@ export function CompareDialog(): React.ReactElement | null {
 export function Toasts(): React.ReactElement {
   const items = useToasts((s) => s.items)
   const dismiss = useToasts((s) => s.dismiss)
+  const busy = useBusy((s) => s.message)
   return (
     <div className="dn-toasts" aria-live="polite">
+      {busy && (
+        <div role="status" className="dn-toast dn-busy" data-testid="busy">
+          <span className="dn-spinner" aria-hidden="true" />
+          {busy}
+        </div>
+      )}
       {items.map((i) => (
         <div key={i.id} role="status" className={`dn-toast dn-toast-${i.kind}`} data-testid="toast" onClick={() => dismiss(i.id)}>
           {i.message}

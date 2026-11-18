@@ -1,6 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
 import { APP_NAME, AUTHOR, RELEASES_URL, REPO_URL, type AppInfo } from '../shared/appInfo'
 import { MARKDOWN_EXTENSIONS } from '../shared/fileKind'
+import { basename } from 'node:path'
+import type { ImportLabels, ImportOutcome, ImportProgress } from '../shared/importTypes'
 import { IPC } from '../shared/ipc'
 import type { ExportService } from './services/exportService'
 import type { FsService } from './services/fsService'
@@ -12,6 +14,8 @@ import { checkForUpdate, type FetchLike } from './services/updateService'
 import type { WatchService } from './services/watchService'
 
 const MAX_PATH = 4096
+/** Most files converted from one "import" dialog. */
+const MAX_IMPORT_FILES = 20
 
 function str(v: unknown, name: string, max = MAX_PATH): string {
   if (typeof v !== 'string' || v.length > max) throw new Error(`Invalid argument: ${name}`)
@@ -85,24 +89,35 @@ export function registerIpc({ fs, sessions, watcher, images, exports, imports, g
 
   ipcMain.handle(IPC.getAppInfo, (): AppInfo => ({ name: APP_NAME, version: app.getVersion(), author: AUTHOR, repoUrl: REPO_URL, releasesUrl: RELEASES_URL }))
   ipcMain.handle(IPC.openDropped, (_e, paths) => openDropped(paths, fs, (p) => sessions.grant(p)))
-  const labelsOf = (v: unknown): { slide: string; notes: string } => {
+  const labelsOf = (v: unknown): ImportLabels => {
     const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>
-    return { slide: str(o['slide'], 'labels.slide', 40), notes: str(o['notes'], 'labels.notes', 40) }
+    return { slide: str(o['slide'], 'labels.slide', 40), notes: str(o['notes'], 'labels.notes', 40), ocrNote: str(o['ocrNote'], 'labels.ocrNote', 400) }
+  }
+  /** Tells the window how far a long conversion (OCR) has come. */
+  const progressFor = (path: string) => (done: number, total: number): void => {
+    getWindow()?.webContents.send(IPC.importProgress, { name: basename(path), done, total } satisfies ImportProgress)
   }
   ipcMain.handle(IPC.importDialog, async (_e, labels) => {
     const checked = labelsOf(labels)
     const win = getWindow()
     const opts = {
-      properties: ['openFile'] as Array<'openFile'>,
-      filters: [{ name: 'Documents', extensions: ['pdf', 'docx', 'xlsx', 'pptx', 'html', 'htm'] }, allFilter]
+      properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
+      filters: [{ name: 'Documents', extensions: ['pdf', 'docx', 'xlsx', 'pptx', 'html', 'htm', 'png', 'jpg', 'jpeg'] }, allFilter]
     }
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     if (res.canceled || res.filePaths.length === 0) return null
-    const path = res.filePaths[0]
-    await sessions.grant(path) // choosing the file is the user's approval to read it
-    return imports.importFile(path, checked)
+    const outcomes: ImportOutcome[] = []
+    // one after another: text recognition keeps a processor core busy, so files are not run side by side
+    for (const path of res.filePaths.slice(0, MAX_IMPORT_FILES)) {
+      await sessions.grant(path) // choosing the file is the user's approval to read it
+      outcomes.push(await imports.importFile(path, checked, progressFor(path)))
+    }
+    return outcomes
   })
-  ipcMain.handle(IPC.importFile, (_e, p, labels) => imports.importFile(str(p, 'path'), labelsOf(labels)))
+  ipcMain.handle(IPC.importFile, (_e, p, labels) => {
+    const path = str(p, 'path')
+    return imports.importFile(path, labelsOf(labels), progressFor(path))
+  })
   ipcMain.handle(IPC.checkUpdate, () => checkForUpdate(app.getVersion(), net.fetch as unknown as FetchLike))
 
   ipcMain.on(IPC.watch, (_e, paths: unknown) => {

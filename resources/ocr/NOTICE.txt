@@ -1,0 +1,9 @@
+Tesseract trained data (kor, eng)
+=================================
+These files are the "4.0.0_best_int" (integerized "tessdata_best") language data published for Tesseract.js
+(https://github.com/naptha/tessdata), derived from https://github.com/tesseract-ocr/tessdata_best.
+They are used by donotext only for reading text out of scanned pages and pictures, entirely on this computer.
+
+License: Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+Copyright: the Tesseract OCR contributors.
+The files are included unchanged.

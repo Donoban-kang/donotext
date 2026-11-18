@@ -1,6 +1,7 @@
 // PowerPoint (.pptx) -> Markdown: one section per slide with its title, text, tables and speaker notes.
 
 import { escapeMarkdown } from './markdownEscape'
+import { normalizeListIndent } from './listIndent'
 import { markdownStats } from './markdownStats'
 import { attr, child, childrenNamed, descend, descendAll, kids, parseXml, tagOf, textOf, type XNode } from './ooxml'
 import type { Converted } from './types'
@@ -160,6 +161,6 @@ export async function convertPptx(bytes: Uint8Array, labels: PptxLabels): Promis
 
   const warnings: ImportWarning[] = []
   if (images > 0) warnings.push({ code: 'imagesSkipped', count: images })
-  const markdown = sections.length ? `${sections.join('\n\n---\n\n')}\n` : ''
+  const markdown = sections.length ? `${normalizeListIndent(sections.join('\n\n---\n\n'))}\n` : ''
   return { markdown, warnings, stats: { ...markdownStats(markdown), slides: slideNo } }
 }

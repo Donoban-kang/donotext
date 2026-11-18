@@ -78,6 +78,17 @@ export const useDialogs = create<DialogState>()((set, get) => ({
   }
 }))
 
+/** A long job in progress (text recognition): shown as a persistent status card until it ends. */
+interface BusyState {
+  message: string | null
+  set(message: string | null): void
+}
+
+export const useBusy = create<BusyState>()((set) => ({
+  message: null,
+  set: (message) => set({ message })
+}))
+
 export interface ToastItem extends Toast {
   id: number
 }

@@ -39,7 +39,7 @@ export async function openDropped(paths: unknown, fs: FsService, grant: (path: s
       } else if (info.isFile()) {
         // PDF and Office documents are binary, but they can be converted: offer them for import instead of refusing
         const format = importFormatOf(name)
-        if (format && format !== 'html') {
+        if (format && format !== 'html') { // html opens as text; everything else is converted
           await grant(p)
           out.push({ kind: 'importable', path: p, name, format })
           continue
